@@ -3,14 +3,27 @@
 import { generateRoomId } from "./helper/utils"
 
 export default function Index() {
-    const startPhotobooth = async() => {
+    const startPhotobooth = () => {
         const roomId = generateRoomId();
     }
     
-
     return (
-        <div>
-            <button onClick={startPhotobooth} className="py-4 px-12 bg-blue-500 text-white text-center">Generate room</button>
+        <div className="h-screen flex flex-col gap-4 items-center justify-center ">
+            <div className="flex md:flex-row flex-col gap-12 md:w-3/5 w-4/5 mx-auto">
+                <div className="border-1 rounded-2xl w-full h-auto p-8 cursor-pointer hover:border-blue-500 hover:text-blue-500">
+                    <p className="text-3xl font-bold">Start photobooth</p> <br />
+                    Invite a friend with shared link and snap side-by-side
+                </div>
+                <div className="border-1 rounded-2xl w-full h-auto p-8">
+                    <p className="text-3xl font-bold">Got a code?</p> <br />
+                    <div className="flex items-center gap-4">
+                        <input type="text" className="border-1 border-gray-300 bg-gray-100 px-2 py-4 rounded-2xl" placeholder="Enter code"/>
+                        <button className="border-1 border-blue-500 bg-blue-100 px-12 py-4 rounded-2xl text-blue-500 cursor-pointer hover:bg-blue-500 hover:text-white">
+                            JOIN
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     )
 }
