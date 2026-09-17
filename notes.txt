@@ -1,0 +1,4 @@
+FLOW
+1. Generate photobooth id/lobby 
+    > theres a host and participant?? 
+    > sync webcams (left person who opened)
