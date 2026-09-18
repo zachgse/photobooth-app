@@ -1,20 +1,42 @@
 "use client"
 
-import { generateRoomId } from "./helper/utils"
+import { collection,addDoc } from "firebase/firestore"
+import { generateRoomId } from "@/helper/utils"
+import { db } from "@/lib/firebase"
+import { toast } from "react-toastify"
 
 export default function Index() {
-    const startPhotobooth = () => {
-        const roomId = generateRoomId();
-        console.log(roomId)
-        /*
-        1. generate room id
-        2. create query to firebase with json object:
-            {
-                "roomId" : roomId,
-                "client" : true
-            }
-        3. redirect to /room/{code}
-        */
+    const startPhotobooth = async() => {
+        try {
+            const roomId = generateRoomId();
+            const rtc = new RTCPeerConnection();
+            const offer = await rtc.createOffer();
+            await rtc.setLocalDescription(offer);
+            const roomRef = await addDoc(collection(db,"rooms"), {
+                createdAt: new Date(),
+                host: true,
+                offer: {
+                    type: offer.type,
+                    sdp: offer.sdp
+
+                }
+            });
+            console.log(roomRef);
+            toast.info('Creating your room', {
+            position: "top-center",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "light"});
+            setTimeout(() => {
+                window.location.href = `/room/${roomId}`;
+            },3000)
+        } catch (error) {
+            console.error(error);
+        }
     }
 
     const joinPhotobooth = async() => { 
