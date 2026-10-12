@@ -1,36 +1,47 @@
 "use client"
 
-import { collection,addDoc } from "firebase/firestore"
+import { setDoc,doc } from "firebase/firestore"
 import { generateRoomId } from "@/helper/utils"
 import { db } from "@/lib/firebase"
 import { toast } from "react-toastify"
+import React from "react"
 
 export default function Index() {
+    const rtcRef = React.useRef<RTCPeerConnection|null>(null)
+
     const startPhotobooth = async() => {
         try {
             const roomId = generateRoomId();
-            const rtc = new RTCPeerConnection();
-            const offer = await rtc.createOffer();
-            await rtc.setLocalDescription(offer);
-            const roomRef = await addDoc(collection(db,"rooms"), {
-                createdAt: new Date(),
-                host: true,
-                offer: {
-                    type: offer.type,
-                    sdp: offer.sdp
-
-                }
+            const rtc = new RTCPeerConnection({
+                iceServers: [
+                    {
+                        urls: ["stun:stun.l.google.com:19302","stun:stun2.l.google.com:19302"]
+                    }
+                ],
+                iceCandidatePoolSize: 10
             });
-            console.log(roomRef);
+
+            rtcRef.current = rtc; 
+            rtc.onicecandidate = async (event) => { 
+                if (event.candidate){
+                    console.log("New ICE Candidate: ", event.candidate);    
+                } 
+            }
+
+            const roomRef = doc(db, "rooms", roomId);
+            await setDoc(roomRef, {
+                createdAt: new Date(),
+            });
+
             toast.info('Creating your room', {
-            position: "top-center",
-            autoClose: 3000,
-            hideProgressBar: false,
-            closeOnClick: false,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            theme: "light"});
+                position: "top-center",
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: false,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+                theme: "light"});
             setTimeout(() => {
                 window.location.href = `/room/${roomId}`;
             },3000)
@@ -46,7 +57,7 @@ export default function Index() {
         3. if yes > redirect to /room/{code} while sending a request to firebase with same roomId and append guest:true in json
         */
     }
-    
+
     return (
         <div className="h-screen flex flex-col gap-4 items-center justify-center ">
             <div className="flex md:flex-row flex-col gap-12 md:w-3/5 w-4/5 mx-auto">

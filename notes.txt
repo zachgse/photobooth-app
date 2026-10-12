@@ -16,3 +16,18 @@ FLOW WITH VARIABLES
     > Behind the scene will create the signaling server and the connectivity
     > Local device will generate media stream object from their webcam 
 2. 
+
+Firebase
+addDoc - create
+setDoc - update
+getDoc - read
+
+/*
+UPDATED STEPS:
+1. Generate room ID
+2. Establish INITIAL RTCPeerConnection (without offers yet until host enables media stream on next page)
+3. Create listener that listens to the network connection details between the users
+4. Create firebase room save to db then redirect to room/id
+5. Re-negotiate once the HOST/LOCAL activates react webcam (get media stream) then re negotiate and 
+    update rtc connection
+*/
