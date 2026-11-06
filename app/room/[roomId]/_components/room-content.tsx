@@ -1,9 +1,12 @@
 "use client"
-import React from "react"
+import { TestContext, TestContextProvider } from "@/app/context/TestContext";
+import React, { useContext } from "react"
 import Webcam from "react-webcam"
 
 export default function RoomContent () {
     const webcamRef = React.useRef<Webcam|null>(null);
+    const context = useContext(TestContext);
+    console.log("context value is: ", context?.name);
     return (
         <div className="flex flex items-center justify-center gap-24">
             <div className="relative w-3/5">

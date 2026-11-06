@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import "./globals.css";
 import { ToastContainer } from "react-toastify";
+import { TestContextProvider } from "./context/TestContext";
 
 
 export const metadata: Metadata = {
@@ -16,8 +17,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <TestContextProvider>
         <ToastContainer />
         {children}
+        </TestContextProvider>
       </body>
     </html>
   );
