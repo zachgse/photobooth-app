@@ -4,9 +4,27 @@ import React, { useContext } from "react"
 import Webcam from "react-webcam"
 
 export default function RoomContent () {
-    const webcamRef = React.useRef<Webcam|null>(null);
     const context = useContext(TestContext);
-    console.log("context value is: ", context?.name);
+    const webcamRef = React.useRef<Webcam|null>(null);
+
+    const handleUserMedia = (stream: MediaStream) => {
+        if (context) {
+            stream.getTracks().forEach((track) => {
+                context.rtcRef.current?.addTrack(track,stream);
+            })
+        }
+    }
+
+    React.useEffect(() => {
+        const pc = context?.rtcRef.current;
+
+        if (!pc) return;
+
+        pc.ontrack = (event) => {
+            context.remoteStream = event.streams[0];
+        }
+    }, [context?.rtcRef.current])
+
     return (
         <div className="flex flex items-center justify-center gap-24">
             <div className="relative w-3/5">
@@ -15,6 +33,7 @@ export default function RoomContent () {
                     audio={false}
                     screenshotFormat="image/jpeg"
                     ref={webcamRef}
+                    onUserMedia={handleUserMedia}
                     className="w-full h-auto"
                 />
                 {/* add local and remote stream components */}

@@ -10,36 +10,37 @@ import { useRouter } from "next/navigation"
 // import { useRTC } from "./context/RTCContext"
 
 export default function Index() {
-    const rtcRef = React.useRef<RTCPeerConnection|null>(null)
     const context = useContext(TestContext);
     const router = useRouter();
-    // const rtcCtx = React.useContext(useRTC);
 
     const startPhotobooth = async() => {
         try {
             const roomId = generateRoomId();
-            const rtc = new RTCPeerConnection({
-                iceServers: [
-                    {
-                        urls: ["stun:stun.l.google.com:19302","stun:stun2.l.google.com:19302"]
-                    }
-                ],
-                iceCandidatePoolSize: 10
-            });
+            const pc = context?.createConnection();
+            // const rtc = new RTCPeerConnection({
+            //     iceServers: [
+            //         {
+            //             urls: ["stun:stun.l.google.com:19302","stun:stun2.l.google.com:19302"]
+            //         }
+            //     ],
+            //     iceCandidatePoolSize: 10
+            // });
 
-            rtcRef.current = rtc; 
-            rtc.onicecandidate = async (event) => { 
-                if (event.candidate){
-                    console.log("New ICE Candidate: ", event.candidate);    
-                } 
-            }
+            // if (context) {
+            //     context.rtcRef.current = rtc;
+            // }
+            
+            // rtc.onicecandidate = async (event) => { 
+            //     if (event.candidate){
+            //         console.log("New ICE Candidate: ", event.candidate);    
+            //     } 
+            // }
 
             // const roomRef = doc(db, "rooms", roomId);
             // await setDoc(roomRef, {
             //     createdAt: new Date(),
             // });
             console.log(roomId);
-            context?.setName(roomId);
 
             toast.info('Creating your room', {
                 position: "top-center",
