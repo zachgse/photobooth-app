@@ -1,7 +1,7 @@
 "use client"
 import { TestContext, TestContextProvider } from "@/app/context/TestContext";
 import { db } from "@/lib/firebase";
-import { doc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import React, { useContext } from "react"
 import Webcam from "react-webcam"
 
@@ -12,7 +12,6 @@ interface RoomContentProps {
 export default function RoomContent ({roomId}:RoomContentProps) {
     const context = useContext(TestContext);
     const webcamRef = React.useRef<Webcam|null>(null);
-    console.log("room id is: ", roomId)
 
     const handleUserMedia = async(stream: MediaStream) => {
         if (context) {
@@ -24,7 +23,14 @@ export default function RoomContent ({roomId}:RoomContentProps) {
             const offer = await context.rtcRef.current?.createOffer();
             await context.rtcRef.current?.setLocalDescription(offer);
             // save offer to firestore
-            // const roomRef = doc(db,"rooms",)
+            const roomRef = doc(db,"rooms",roomId);
+            await updateDoc(roomRef,{
+                offer: {
+                    type: offer?.type,
+                    sdp: offer?.sdp
+                },
+                status: "waiting"
+            });
         }
     }
 
