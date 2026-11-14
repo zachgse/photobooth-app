@@ -1,29 +1,32 @@
 "use client"
 import { TestContext, TestContextProvider } from "@/app/context/TestContext";
+import { db } from "@/lib/firebase";
+import { doc } from "firebase/firestore";
 import React, { useContext } from "react"
 import Webcam from "react-webcam"
 
-export default function RoomContent () {
+interface RoomContentProps { 
+    roomId: string
+}
+
+export default function RoomContent ({roomId}:RoomContentProps) {
     const context = useContext(TestContext);
     const webcamRef = React.useRef<Webcam|null>(null);
+    console.log("room id is: ", roomId)
 
-    const handleUserMedia = (stream: MediaStream) => {
+    const handleUserMedia = async(stream: MediaStream) => {
         if (context) {
             stream.getTracks().forEach((track) => {
                 context.rtcRef.current?.addTrack(track,stream);
-            })
+            });
+
+            // create sdp offer
+            const offer = await context.rtcRef.current?.createOffer();
+            await context.rtcRef.current?.setLocalDescription(offer);
+            // save offer to firestore
+            // const roomRef = doc(db,"rooms",)
         }
     }
-
-    React.useEffect(() => {
-        const pc = context?.rtcRef.current;
-
-        if (!pc) return;
-
-        pc.ontrack = (event) => {
-            context.remoteStream = event.streams[0];
-        }
-    }, [context?.rtcRef.current])
 
     return (
         <div className="flex flex items-center justify-center gap-24">

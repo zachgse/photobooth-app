@@ -8,12 +8,14 @@ interface PageProps {
 
 export default async function RoomId({params}:PageProps) {
     const { roomId } = await params;
-    const roomRef = doc(db, "rooms", roomId);
-    const room = await getDoc(roomRef);
+    const roomRef = doc(db, "rooms", roomId); //not needed
+    const room = await getDoc(roomRef); //not needed
+
+    // pass the params
 
     return (
     <div className="flex flex items-center justify-center gap-24">
-        <RoomContent/>
+        <RoomContent roomId={roomId}/>
     </div>
     )
 }

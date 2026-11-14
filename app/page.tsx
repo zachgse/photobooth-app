@@ -36,10 +36,10 @@ export default function Index() {
             //     } 
             // }
 
-            // const roomRef = doc(db, "rooms", roomId);
-            // await setDoc(roomRef, {
-            //     createdAt: new Date(),
-            // });
+            const roomRef = doc(db, "rooms", roomId);
+            await setDoc(roomRef, {
+                createdAt: new Date(),
+            });
             console.log(roomId);
 
             toast.info('Creating your room', {
