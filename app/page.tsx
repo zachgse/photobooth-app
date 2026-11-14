@@ -40,7 +40,7 @@ export default function Index() {
             await setDoc(roomRef, {
                 createdAt: new Date(),
             });
-            console.log(roomId);
+            // console.log(roomId);
 
             toast.info('Creating your room', {
                 position: "top-center",

@@ -1,7 +1,7 @@
 "use client"
 import { TestContext, TestContextProvider } from "@/app/context/TestContext";
 import { db } from "@/lib/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import React, { useContext } from "react"
 import Webcam from "react-webcam"
 
@@ -18,21 +18,50 @@ export default function RoomContent ({roomId}:RoomContentProps) {
             stream.getTracks().forEach((track) => {
                 context.rtcRef.current?.addTrack(track,stream);
             });
-
-            // create sdp offer
-            const offer = await context.rtcRef.current?.createOffer();
-            await context.rtcRef.current?.setLocalDescription(offer);
-            // save offer to firestore
+            // check firebase room
             const roomRef = doc(db,"rooms",roomId);
-            await updateDoc(roomRef,{
-                offer: {
-                    type: offer?.type,
-                    sdp: offer?.sdp
-                },
-                status: "waiting"
-            });
+
+            // check if offer exists then proceed to logic
+            const roomSnap = await getDoc(roomRef);
+
+            if (roomSnap.exists()){
+                const roomData = roomSnap.data();
+
+                if (roomData.offer) {
+                    const offer = roomData.offer;
+                    await context.rtcRef.current?.setRemoteDescription(
+                        new RTCSessionDescription(offer)
+                    );
+                    const answer = await context.rtcRef.current?.createAnswer();
+                    await updateDoc(roomRef, {
+                        answer: {
+                            type: answer?.type,
+                            sdp: answer?.sdp
+                        },
+                        status: "connected"
+                    });
+                } else {
+                    // create sdp offer
+                    const offer = await context.rtcRef.current?.createOffer();
+                    await context.rtcRef.current?.setLocalDescription(offer);
+                    // save offer to firestore
+                    
+                    await updateDoc(roomRef,{
+                        offer: {
+                            type: offer?.type,
+                            sdp: offer?.sdp
+                        },
+                        status: "waiting"
+                    });
+                }
+            } else {
+                // add redirect back here
+                console.log("Room does not exist");
+            }
         }
     }
+
+    
 
     return (
         <div className="flex flex items-center justify-center gap-24">

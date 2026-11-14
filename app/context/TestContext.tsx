@@ -35,6 +35,10 @@ export function TestContextProvider({children}:{
         return pc;
     }
 
+    const handleOffer = () => {
+        
+    }
+
     return (
         <TestContext.Provider value={{rtcRef,createConnection,remoteStream,setRemoteStream}}>
             {children}
