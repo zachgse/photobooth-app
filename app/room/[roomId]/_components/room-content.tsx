@@ -21,24 +21,59 @@ export default function RoomContent ({roomId}:RoomContentProps) {
             // check firebase room
             const roomRef = doc(db,"rooms",roomId);
 
-            if (context.role == "guest") {
-                const unsubscribe = onSnapshot(roomRef, async(snapshot) => {
-                    const roomData = snapshot.data();
-                    if (!roomData?.offer) return;
-                    const offer = roomData?.offer;
-                    await context.rtcRef.current?.setRemoteDescription(
-                        new RTCSessionDescription(offer)
-                    );
-                    const answer = await context.rtcRef.current?.createAnswer();
-                    await context.rtcRef.current?.setLocalDescription(answer);
-                    await updateDoc(roomRef, {
-                        answer: {
-                            type: answer?.type,
-                            sdp: answer?.sdp
-                        },
-                        status: "connected"
-                    });
-                    unsubscribe();
+            if (context.role === "guest") {
+                let isProcessing = false;
+                let unsubscribe = () => {};
+
+                console.log("GUEST ROLE:", context.role);
+
+                unsubscribe = onSnapshot(roomRef, async (snapshot) => {
+                    try {
+                        const roomData = snapshot.data();
+
+                        console.log("Guest received room update:", roomData);
+
+                        if (!roomData?.offer || isProcessing) return;
+
+                        const rtc = context.rtcRef.current;
+
+                        if (!rtc) {
+                            console.error("RTCPeerConnection is null!");
+                            return;
+                        }
+
+                        isProcessing = true;
+
+                        console.log("Offer received. Setting remote description...");
+
+                        await rtc.setRemoteDescription(roomData.offer);
+
+                        console.log("Remote description set!");
+
+                        const answer = await rtc.createAnswer();
+
+                        console.log("Answer created!");
+
+                        await rtc.setLocalDescription(answer);
+
+                        console.log("Local description set!");
+
+                        await updateDoc(roomRef, {
+                            answer: {
+                                type: answer.type,
+                                sdp: answer.sdp
+                            },
+                            status: "answer-created"
+                        });
+
+                        console.log("ANSWER SAVED TO FIRESTORE!");
+
+                        unsubscribe();
+
+                    } catch (error) {
+                        isProcessing = false;
+                        console.error("GUEST WEBRTC ERROR:", error);
+                    }
                 });
             } else {
                 // create sdp offer
