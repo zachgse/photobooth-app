@@ -21,14 +21,11 @@ export default function RoomContent ({roomId}:RoomContentProps) {
             // check firebase room
             const roomRef = doc(db,"rooms",roomId);
 
-            // check if offer exists then proceed to logic  
-            const roomSnap = await getDoc(roomRef);
-
-            if (roomSnap.exists()){
-                const roomData = roomSnap.data();
-
-                if (context.role == "guest") {
-                    const offer = roomData.offer;
+            if (context.role == "guest") {
+                const unsubscribe = onSnapshot(roomRef, async(snapshot) => {
+                    const roomData = snapshot.data();
+                    if (!roomData?.offer) return;
+                    const offer = roomData?.offer;
                     await context.rtcRef.current?.setRemoteDescription(
                         new RTCSessionDescription(offer)
                     );
@@ -41,24 +38,25 @@ export default function RoomContent ({roomId}:RoomContentProps) {
                         },
                         status: "connected"
                     });
-                } else {
-                    // create sdp offer
-                    const offer = await context.rtcRef.current?.createOffer();
-                    await context.rtcRef.current?.setLocalDescription(offer);
-                    // save offer to firestore
-                    
-                    await updateDoc(roomRef,{
-                        offer: {
-                            type: offer?.type,
-                            sdp: offer?.sdp
-                        },
-                        status: "waiting"
-                    });
-                }
+                    unsubscribe();
+                });
             } else {
-                // add redirect back here
-                console.log("Room does not exist");
+                // create sdp offer
+                const offer = await context.rtcRef.current?.createOffer();
+                await context.rtcRef.current?.setLocalDescription(offer);
+                // save offer to firestore
+                
+                await updateDoc(roomRef,{
+                    offer: {
+                        type: offer?.type,
+                        sdp: offer?.sdp
+                    },
+                    status: "waiting"
+                });
             }
+        } else {
+            // add redirect back here
+            console.log("Room does not exist");
         }
     }
 
