@@ -12,11 +12,13 @@ import { useRouter } from "next/navigation"
 export default function Index() {
     const context = useContext(TestContext);
     const router = useRouter();
+    const [codeInput,setCodeInput] = React.useState<string>("");
 
     const startPhotobooth = async() => {
         try {
             const roomId = generateRoomId();
             const pc = context?.createConnection();
+            const rtc = context?.rtcRef.current;
             // const rtc = new RTCPeerConnection({
             //     iceServers: [
             //         {
@@ -29,13 +31,15 @@ export default function Index() {
             // if (context) {
             //     context.rtcRef.current = rtc;
             // }
-            
-            // rtc.onicecandidate = async (event) => { 
-            //     if (event.candidate){
-            //         console.log("New ICE Candidate: ", event.candidate);    
-            //     } 
-            // }
 
+            if (rtc) {
+                rtc.onicecandidate = async (event) => { 
+                    if (event.candidate){
+                        console.log("New ICE Candidate: ", event.candidate);    
+                    } 
+                }
+            }
+            
             const roomRef = doc(db, "rooms", roomId);
             await setDoc(roomRef, {
                 createdAt: new Date(),
@@ -59,7 +63,8 @@ export default function Index() {
         }
     }
 
-    const joinPhotobooth = async() => { 
+    const joinPhotobooth = () => { 
+        router.push(`/room/${codeInput}`);
         /*  
         1. put code in the form
         2. check in firebase backend if the code exist 
@@ -74,11 +79,15 @@ export default function Index() {
                         <p className="text-3xl font-bold">Start photobooth</p> <br />
                         Invite a friend with shared link and snap side-by-side
                     </div>
-                    <div className="border-1 rounded-2xl w-full h-auto p-8">
+                    <div className="border-1 rounded-2xl w-full h-auto p-8 flex flex-col">
                         <p className="text-3xl font-bold">Got a code?</p> <br />
                         <div className="flex items-center gap-4">
-                            <input type="text" className="border-1 border-gray-300 bg-gray-100 px-2 py-4 rounded-2xl" placeholder="Enter code"/>
-                            <button className="border-1 border-blue-500 bg-blue-100 px-12 py-4 rounded-2xl text-blue-500 cursor-pointer hover:bg-blue-500 hover:text-white">
+                            <input type="text" className="border-1 border-gray-300 bg-gray-100 px-2 py-4 rounded-2xl" placeholder="Enter code"
+                                value={codeInput}
+                                onChange={(e)=>setCodeInput(e.target.value)}
+                                />
+                            <button onClick={joinPhotobooth}
+                                className="border-1 border-blue-500 bg-blue-100 px-12 py-4 rounded-2xl text-blue-500 cursor-pointer hover:bg-blue-500 hover:text-white">
                                 JOIN
                             </button>
                         </div>

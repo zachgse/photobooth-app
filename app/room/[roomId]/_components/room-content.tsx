@@ -1,8 +1,8 @@
 "use client"
 import { TestContext, TestContextProvider } from "@/app/context/TestContext";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import React, { useContext } from "react"
+import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
+import React, { useContext, useEffect } from "react"
 import Webcam from "react-webcam"
 
 interface RoomContentProps { 
@@ -33,6 +33,7 @@ export default function RoomContent ({roomId}:RoomContentProps) {
                         new RTCSessionDescription(offer)
                     );
                     const answer = await context.rtcRef.current?.createAnswer();
+                    await context.rtcRef.current?.setLocalDescription(answer);
                     await updateDoc(roomRef, {
                         answer: {
                             type: answer?.type,
@@ -61,7 +62,29 @@ export default function RoomContent ({roomId}:RoomContentProps) {
         }
     }
 
-    
+    useEffect(() => {
+        if (!context?.rtcRef.current) return;
+
+        const rtc = context.rtcRef.current;
+        const roomRef = doc(db, "rooms", roomId);
+
+        const unsubscribe = onSnapshot(roomRef, async (snapshot) => {
+            const data = snapshot.data();
+
+            if (
+                data?.answer &&
+                rtc.signalingState === "have-local-offer"
+            ) {
+                await rtc.setRemoteDescription(
+                    new RTCSessionDescription(data.answer)
+                );
+            }
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, [roomId, context]);
 
     return (
         <div className="flex flex items-center justify-center gap-24">
@@ -69,11 +92,33 @@ export default function RoomContent ({roomId}:RoomContentProps) {
                 <Webcam
                     mirrored
                     audio={false}
+                    videoConstraints={{facingMode:"user"}}
                     screenshotFormat="image/jpeg"
                     ref={webcamRef}
-                    onUserMedia={handleUserMedia}
+                    onUserMedia={(stream) => {
+                        console.log("Camera successfully added: ", stream);
+                        handleUserMedia;
+                    }}
+                    onUserMediaError={(error)=>{
+                        console.error("Camera error: ", error);
+                    }}
                     className="w-full h-auto"
                 />
+                {context?.remoteStream ? (
+                    <div>
+                        <video ref={(video) => {
+                            if (video) {
+                                video.srcObject = context.remoteStream
+                            }
+                        }}
+                        autoPlay
+                        playsInline></video>
+                    </div>
+                    ) : (
+                        <div className="bg-gray-300 w-full h-64 flex flex-col justify-center items-center">
+                            <p>No video yet.</p>
+                        </div>
+                    )}
                 {/* add local and remote stream components */}
 
                 {/* capture */}
