@@ -95,10 +95,7 @@ export default function RoomContent ({roomId}:RoomContentProps) {
                     videoConstraints={{facingMode:"user"}}
                     screenshotFormat="image/jpeg"
                     ref={webcamRef}
-                    onUserMedia={(stream) => {
-                        console.log("Camera successfully added: ", stream);
-                        handleUserMedia;
-                    }}
+                    onUserMedia={handleUserMedia}
                     onUserMediaError={(error)=>{
                         console.error("Camera error: ", error);
                     }}
