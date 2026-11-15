@@ -7,7 +7,11 @@ interface Shape {
     createConnection: () => void;
     remoteStream: MediaStream | null;
     setRemoteStream: (value: MediaStream) => void;
+    role: Role;
+    setRole: (value: Role) => void;
 }
+
+type Role = "host" | "guest" | null;
 
 export const TestContext = createContext<Shape|null>(null);
 
@@ -16,6 +20,7 @@ export function TestContextProvider({children}:{
 }) {
     const rtcRef = React.useRef<RTCPeerConnection|null>(null);
     const [remoteStream,setRemoteStream] = React.useState<MediaStream|null>(null);
+    const [role,setRole] = React.useState<Role>(null);
     
     const createConnection = () => {
         const pc = new RTCPeerConnection({
@@ -40,7 +45,7 @@ export function TestContextProvider({children}:{
     }
 
     return (
-        <TestContext.Provider value={{rtcRef,createConnection,remoteStream,setRemoteStream}}>
+        <TestContext.Provider value={{rtcRef,createConnection,remoteStream,setRemoteStream,role,setRole}}>
             {children}
         </TestContext.Provider>
     )

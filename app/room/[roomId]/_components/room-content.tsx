@@ -21,13 +21,13 @@ export default function RoomContent ({roomId}:RoomContentProps) {
             // check firebase room
             const roomRef = doc(db,"rooms",roomId);
 
-            // check if offer exists then proceed to logic
+            // check if offer exists then proceed to logic  
             const roomSnap = await getDoc(roomRef);
 
             if (roomSnap.exists()){
                 const roomData = roomSnap.data();
 
-                if (roomData.offer) {
+                if (context.role == "guest") {
                     const offer = roomData.offer;
                     await context.rtcRef.current?.setRemoteDescription(
                         new RTCSessionDescription(offer)

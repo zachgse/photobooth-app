@@ -55,6 +55,7 @@ export default function Index() {
                 draggable: true,
                 progress: undefined,
                 theme: "light"});
+            context?.setRole("host");
             setTimeout(() => {
                 router.push(`/room/${roomId}`);
             },3000)
@@ -64,6 +65,7 @@ export default function Index() {
     }
 
     const joinPhotobooth = () => { 
+        context?.setRole("guest");
         router.push(`/room/${codeInput}`);
         /*  
         1. put code in the form
