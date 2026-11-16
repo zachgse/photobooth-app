@@ -1,53 +1,139 @@
-"use client";
+"use client"
+import { db } from "@/lib/firebase";
+import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
+import React, { createContext,useContext } from "react";
 
-import React, {
-  createContext,
-  useContext,
-  useRef,
-  useState,
-} from "react";
-
-interface RTCConnection { //interface is needed to infer the type/shape of RTCConnection
-    rtcRef: React.RefObject<RTCPeerConnection | null>;
-    // connectionState: RTCPeerConnectionState;
-    // createOffer: () => Promise<void>;
-    // handleOffer: (offer: RTCSessionDescriptionInit) => Promise<void>;
-    // handleAnswer: (answer: RTCSessionDescriptionInit) => Promise<void>;
+interface RTCInterface {
+    rtcRef: React.RefObject<RTCPeerConnection|null>;
+    createConnection: (localStream:MediaStream) => void;
+    remoteStream: MediaStream | null;
+    setRemoteStream: (mediaStream:MediaStream) => void;
+    role: Role;
+    setRole: (role: Role) => void;
+    handleOffer: (roomId:string) => void;
+    handleAnswer: (roomId:string) => void;
 }
 
-const RTCContext = createContext<RTCConnection | null>(null);
+type Role = "host" | "guest" | null;
 
-export function RTCContextProvider({
-  children,
-}: {
-  children: React.ReactNode;
+export const RTCContext = createContext<RTCInterface|null>(null);
+
+export function RTCContextProvider({children}:{
+    children: React.ReactNode
 }) {
-  const rtcRef = useRef<RTCPeerConnection | null>(null);
+    const rtcRef = React.useRef<RTCPeerConnection|null>(null);
+    const [remoteStream,setRemoteStream] = React.useState<MediaStream|null>(null);
+    const [role,setRole] = React.useState<Role>(null);
+    
+    // create connection should take media stream item from local webcam
+    const createConnection = (localStream:MediaStream) => {
+        const pc = new RTCPeerConnection({
+            iceServers: [
+                {
+                    urls: ["stun:stun.l.google.com:19302","stun:stun2.l.google.com:19302"]
+                }
+            ],
+            iceCandidatePoolSize: 10
+        });
 
-  const [connectionState, setConnectionState] =
-    useState<RTCPeerConnectionState>("new");
+        // push tracks from local stream to peer connection
+        localStream.getTracks().forEach((track) => {
+            pc.addTrack(track,localStream);
+        });
 
-  const value: RTCConnection = {
-    rtcRef,
-    // connectionState,
-    // createOffer,
-    // handleOffer,
-    // handleAnswer
-  };
+        // pull tracks from remote stream, add to video connection
+        pc.ontrack = (event) => {
+            const stream = event.streams[0] ?? new MediaStream([event.track]);
+            setRemoteStream(stream);
+        };
 
-  return (
-    <RTCContext.Provider value={value}>
-      {children}
-    </RTCContext.Provider>
-  );
+        rtcRef.current = pc;
+        return pc;
+    }
+
+    const handleOffer = async(roomId:string) => {
+        const pc = rtcRef.current;
+        const roomRef = doc(db,"rooms",roomId);
+        if (!pc) return;
+        // ice candidate of host
+        pc.onicecandidate = async(event) => {
+            event.candidate && await updateDoc(roomRef, {
+                offerCandidates: event.candidate.toJSON()  
+            })
+        }
+        const offerDescription = await pc.createOffer();
+        await pc.setLocalDescription(offerDescription);
+
+        // firebase call
+        await updateDoc(roomRef, {
+            offer: {
+                sdp: offerDescription.sdp,
+                type: offerDescription.type
+            }
+        });
+        
+        // listens to GUEST answer only
+        onSnapshot(roomRef,(snapshot) => {
+            // listen to answer via snapshot event in firebase
+            const data = snapshot.data();
+            if (!pc.currentRemoteDescription && data?.answer){
+                const answerDescription = new RTCSessionDescription(data?.answer);
+                pc.setRemoteDescription(answerDescription);
+            } 
+        });
+        // listens to GUEST ice candidate information 
+        onSnapshot(roomRef,(snapshot) => {
+            const data = snapshot.data();
+            if (data?.answer && data?.answerCandidates){
+                pc.addIceCandidate(new RTCIceCandidate(data?.answerCandidates));
+            }
+        });
+        rtcRef.current = pc;
+        return pc;
+    }
+
+    const handleAnswer = async(roomId:string) => {
+        const pc = rtcRef.current;
+        const roomRef = doc(db,"rooms",roomId);
+        const snapshot = await getDoc(roomRef);
+        const roomData = snapshot.data();
+        if (!pc) return;
+        pc.onicecandidate = async(event) => {
+            event.candidate && await updateDoc(roomRef,{
+                answerCandidates: event.candidate.toJSON()
+            }); 
+        };
+        // call the data from firebase to get the offer
+        const offerDescription = roomData?.offer;
+        await pc.setRemoteDescription(new RTCSessionDescription(offerDescription));
+
+        const answerDescription = await pc.createAnswer();
+        await pc.setLocalDescription(answerDescription);
+
+        await updateDoc(roomRef, {
+            answer: {
+                sdp: answerDescription.sdp,
+                type: answerDescription.type
+            }
+        });
+
+        onSnapshot(roomRef,async(snapshot) => {
+            const data = snapshot.data();
+            if (data?.offer && data?.offerCandidates) {
+                pc.addIceCandidate(new RTCIceCandidate(data?.offerCandidates));
+            }
+        });
+    }
+
+    return (
+        <RTCContext.Provider value={{rtcRef,
+                                    createConnection,
+                                    remoteStream,setRemoteStream,
+                                    role,setRole,
+                                    handleOffer,handleAnswer}}>
+            {children}
+        </RTCContext.Provider>
+    )
 }
 
-// export function useRTC() { //custom hook to use the rtcConnection Context
-//   const context = useContext(RTCContext);
-
-//   if (!context) {
-//     throw new Error("useRTC must be used within RTCContextProvider");
-//   }
-
-//   return context;
-// }
+export const useRTC = () => useContext(RTCContext);

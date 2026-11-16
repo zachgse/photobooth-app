@@ -1,0 +1,44 @@
+problems: 
+1. if host no logs (only in LOCAL VIDEO TRACK ln 25 room context tsx)
+
+answer: 
+1. console.log("Offer received. Setting remote description..."); ln 59 room content tsx 
+2.   console.log("REMOTE TRACK:", {
+        enabled: track.enabled,
+        muted: track.muted,
+        readyState: track.readyState
+    }); 
+    in test context
+
+
+-------------------------------------
+STEPS: 
+steps:
+1. set up media resources
+  > localStream (from react webcam)
+  > remoteStream (from MediaStream object)
+  > push local tracks to peer to peer connection
+  > pull tracks from remote stream
+2. create an offer (idk if same logic with my process but prolly not separate offer from answer)
+  > GET ICE Candidates from offer then add to database 
+    pc.onicecandidate = (event) => {
+    event.candidate && offerCandidates.add(event.candidate.toJSON());
+  };
+  >  create offer
+  > set offer to local description 
+  > update database again with the local sdp
+  > listen for remote answer with onSnapShot (then set remote description)
+  > add event handler when answer with onSnapShot and add iceCandidate to the peer connection
+3. For answer
+  > GET ICE Candidates from offer then add to database (same as offer)
+  > Check offer(sdp and type) from database then set Remote description (new RTC Session description)
+  > create answer
+  > set answer to local description
+  > update database again with local sdp (techncially the answer)
+  > listen for offer candidates then add iceCandidate to the peer connection
+
+
+DATA SHAPE
+rooms/ 
+  {roomId} 
+    

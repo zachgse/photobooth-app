@@ -4,47 +4,23 @@ import { setDoc,doc } from "firebase/firestore"
 import { generateRoomId } from "@/helper/utils"
 import { db } from "@/lib/firebase"
 import { toast } from "react-toastify"
-import React, { useContext } from "react"
-import { TestContext, TestContextProvider } from "./context/TestContext"
+import React from "react"
+import { useRTC } from "./context/RTCContext"
 import { useRouter } from "next/navigation"
-// import { useRTC } from "./context/RTCContext"
 
 export default function Index() {
-    const context = useContext(TestContext);
+    const context = useRTC();
     const router = useRouter();
     const [codeInput,setCodeInput] = React.useState<string>("");
 
     const startPhotobooth = async() => {
         try {
             const roomId = generateRoomId();
-            const pc = context?.createConnection();
-            const rtc = context?.rtcRef.current;
-            // const rtc = new RTCPeerConnection({
-            //     iceServers: [
-            //         {
-            //             urls: ["stun:stun.l.google.com:19302","stun:stun2.l.google.com:19302"]
-            //         }
-            //     ],
-            //     iceCandidatePoolSize: 10
-            // });
-
-            // if (context) {
-            //     context.rtcRef.current = rtc;
-            // }
-
-            if (rtc) {
-                rtc.onicecandidate = async (event) => { 
-                    if (event.candidate){
-                        console.log("New ICE Candidate: ", event.candidate);    
-                    } 
-                }
-            }
             
             const roomRef = doc(db, "rooms", roomId);
             await setDoc(roomRef, {
                 createdAt: new Date(),
             });
-            // console.log(roomId);
 
             toast.info('Creating your room', {
                 position: "top-center",
@@ -55,7 +31,9 @@ export default function Index() {
                 draggable: true,
                 progress: undefined,
                 theme: "light"});
+
             context?.setRole("host");
+
             setTimeout(() => {
                 router.push(`/room/${roomId}`);
             },3000)
@@ -67,11 +45,6 @@ export default function Index() {
     const joinPhotobooth = () => { 
         context?.setRole("guest");
         router.push(`/room/${codeInput}`);
-        /*  
-        1. put code in the form
-        2. check in firebase backend if the code exist 
-        3. if yes > redirect to /room/{code} while sending a request to firebase with same roomId and append guest:true in json
-        */
     }
 
     return (
