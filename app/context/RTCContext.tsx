@@ -55,12 +55,14 @@ export function RTCContextProvider({children}:{
         const pc = rtcRef.current;
         const roomRef = doc(db,"rooms",roomId);
         if (!pc) return;
+
         // ice candidate of host
         pc.onicecandidate = async(event) => {
             event.candidate && await updateDoc(roomRef, {
                 offerCandidates: event.candidate.toJSON()  
             })
         }
+        
         const offerDescription = await pc.createOffer();
         await pc.setLocalDescription(offerDescription);
 
@@ -81,6 +83,7 @@ export function RTCContextProvider({children}:{
                 pc.setRemoteDescription(answerDescription);
             } 
         });
+
         // listens to GUEST ice candidate information 
         onSnapshot(roomRef,(snapshot) => {
             const data = snapshot.data();
@@ -88,6 +91,7 @@ export function RTCContextProvider({children}:{
                 pc.addIceCandidate(new RTCIceCandidate(data?.answerCandidates));
             }
         });
+
         rtcRef.current = pc;
         return pc;
     }
@@ -97,12 +101,15 @@ export function RTCContextProvider({children}:{
         const roomRef = doc(db,"rooms",roomId);
         const snapshot = await getDoc(roomRef);
         const roomData = snapshot.data();
+
         if (!pc) return;
+
         pc.onicecandidate = async(event) => {
             event.candidate && await updateDoc(roomRef,{
                 answerCandidates: event.candidate.toJSON()
             }); 
         };
+
         // call the data from firebase to get the offer
         const offerDescription = roomData?.offer;
         await pc.setRemoteDescription(new RTCSessionDescription(offerDescription));

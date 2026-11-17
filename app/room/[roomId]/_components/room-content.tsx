@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect } from "react"
+import React from "react"
 import Webcam from "react-webcam"
 import { useRTC } from "@/app/context/RTCContext";
 
@@ -22,25 +22,14 @@ export default function RoomContent ({roomId}:RoomContentProps) {
         }
     }
 
-    useEffect(() => {
-    const video = videoRef.current;
+    React.useEffect(() => {
+        const video = videoRef.current;
 
-    if (!video || !context?.remoteStream) return;
+        if (!video || !context?.remoteStream) return;
 
-    video.srcObject = context.remoteStream;
+        video.srcObject = context.remoteStream;
 
-    video.onloadedmetadata = () => {
-        console.log("Video metadata loaded");
-        console.log(video.videoWidth, video.videoHeight);
-    };
-
-    video.onplaying = () => {
-        console.log("VIDEO IS PLAYING!");
-    };
-
-    video.play().catch(console.error);
-
-}, [context?.remoteStream]);
+    }, [context?.remoteStream]);
 
     return (
         <div className="flex flex items-center justify-center gap-24">
@@ -57,30 +46,20 @@ export default function RoomContent ({roomId}:RoomContentProps) {
                     }}
                     className="w-full h-auto"
                 />
-{context?.remoteStream ? (
-    <div className="w-full h-auto">
- <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            onLoadedMetadata={(e) => {
-                console.log("Metadata loaded");
-                console.log("Video dimensions:", 
-                    e.currentTarget.videoWidth,
-                    e.currentTarget.videoHeight
-                );
-                e.currentTarget.play();
-            }}
-            className="w-full h-64 object-cover"
-        />
-    </div>
-) : (
-    <div className="bg-gray-300 w-full h-64 flex flex-col justify-center items-center">
-        <p>No video yet.</p>
-    </div>
-)}
-                {/* add local and remote stream components */}
+                {context?.remoteStream ? (
+                    <div className="w-full h-auto">
+                        <video ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="w-full h-64 object-cover -scale-x-100"
+                        />
+                    </div>
+                ) : (
+                    <div className="bg-gray-300 w-full h-64 flex flex-col justify-center items-center">
+                        <p>No video yet.</p>
+                    </div>
+                )}
 
                 {/* capture */}
                 {/* {time && (

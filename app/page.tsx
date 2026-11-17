@@ -1,10 +1,10 @@
 "use client"
 
+import React from "react"
 import { setDoc,doc } from "firebase/firestore"
 import { generateRoomId } from "@/helper/utils"
 import { db } from "@/lib/firebase"
 import { toast } from "react-toastify"
-import React from "react"
 import { useRTC } from "./context/RTCContext"
 import { useRouter } from "next/navigation"
 
@@ -16,11 +16,13 @@ export default function Index() {
     const startPhotobooth = async() => {
         try {
             const roomId = generateRoomId();
-            
             const roomRef = doc(db, "rooms", roomId);
+
             await setDoc(roomRef, {
                 createdAt: new Date(),
             });
+
+            context?.setRole("host");
 
             toast.info('Creating your room', {
                 position: "top-center",
@@ -31,8 +33,6 @@ export default function Index() {
                 draggable: true,
                 progress: undefined,
                 theme: "light"});
-
-            context?.setRole("host");
 
             setTimeout(() => {
                 router.push(`/room/${roomId}`);
