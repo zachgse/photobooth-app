@@ -4,6 +4,7 @@ import React from "react"
 import Webcam from "react-webcam"
 import { useRTC } from "@/app/context/RTCContext";
 import { Timer } from "./timer";
+import { generatePhotoboothStrip } from "./generate-photo";
 
 interface RoomContentProps { 
     roomId: string
@@ -13,8 +14,9 @@ export default function RoomContent ({roomId}:RoomContentProps) {
     const context = useRTC();
     const webcamRef = React.useRef<Webcam|null>(null);
     const videoRef = React.useRef<HTMLVideoElement>(null);
-    const [imgSrc,setImgSrc] = React.useState(null);
     const [time,setTime] = React.useState<number|null>(null);
+    const [images,setImages] = React.useState<string[]>([]);
+    const [generatedStrip,setGeneratedStrip] = React.useState<string|null>(null);
 
     const handleUserMedia = async(stream: MediaStream) => {
         context?.createConnection(stream);
@@ -23,6 +25,27 @@ export default function RoomContent ({roomId}:RoomContentProps) {
         } else {
             context?.handleAnswer(roomId);
         }
+    }
+
+    const capture = () => {
+        const localPic = webcamRef.current?.getScreenshot();
+
+        if (!localPic) return;
+
+        setImages((prev) => {
+            if (prev.length >= 4) return prev;
+            return [...prev, localPic];
+        });
+    };
+
+    const handleGenerate = async(photos:string[]) => {
+        const strip = await generatePhotoboothStrip({
+            photos:photos,
+            width:600,
+            height:1800
+        });
+
+        setGeneratedStrip(strip);
     }
 
     React.useEffect(() => {
@@ -38,7 +61,7 @@ export default function RoomContent ({roomId}:RoomContentProps) {
         if (time === null) return;
 
         if (time === 0) {
-            // call capture
+            capture();
             setTime(null);
             return;
         }
@@ -48,10 +71,15 @@ export default function RoomContent ({roomId}:RoomContentProps) {
         }, 1000)
 
         return () => clearTimeout(startTimer);
-    }, [time])
+    }, [time]);
+
+    React.useEffect(() => {
+        console.log("images length is ", images);
+        if (images && images.length == 4) handleGenerate(images);
+    }, [images])
 
     return (
-        <div className="lg:w-3/5 md:w-4/5 h-screen flex flex-col gap-8 items-center justify-center">
+        <div className="lg:w-3/5 md:w-4/5 min-h-screen flex flex-col gap-8 items-center justify-center">
             <div className="w-full flex justify-center px-12">
                 <div className="relative w-full">
                     <Webcam
@@ -89,12 +117,20 @@ export default function RoomContent ({roomId}:RoomContentProps) {
             </div>
 
             <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-2 px-16">
-                <div className="h-60 bg-green-300"/>
-                <div className="h-60 bg-green-300"/>
-                <div className="h-60 bg-green-300"/>
-                <div className="h-60 bg-green-300"/>
+                {images && images.map((image,i) => (
+                    <div className="h-60 w-full" key={i}>
+                        <img src={image} alt="" />
+                    </div>
+                ))}
             </div>
 
+            {generatedStrip && (
+                <img
+                    src={generatedStrip}
+                    alt="Generated photobooth strip"
+                    className="w-full max-w-xs"
+                />
+            )}
 
             <button onClick={() => setTime(4)}
                 className="bg-black px-12 py-4 text-white rounded-lg cursor-pointer">
