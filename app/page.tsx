@@ -54,15 +54,15 @@ export default function Index() {
                         <p className="text-3xl font-bold">Start photobooth</p> <br />
                         Invite a friend with shared link and snap side-by-side
                     </div>
-                    <div className="border-1 rounded-2xl w-full h-auto p-8 flex flex-col">
+                    <div className="border-1 rounded-2xl w-full p-8 flex flex-col">
                         <p className="text-3xl font-bold">Got a code?</p> <br />
-                        <div className="flex items-center gap-4">
+                        <div className="flex md:flex-row flex-col items-center gap-4">
                             <input type="text" className="border-1 border-gray-300 bg-gray-100 px-2 py-4 rounded-2xl" placeholder="Enter code"
                                 value={codeInput}
                                 onChange={(e)=>setCodeInput(e.target.value)}
                                 />
                             <button onClick={joinPhotobooth}
-                                className="border-1 border-blue-500 bg-blue-100 px-12 py-4 rounded-2xl text-blue-500 cursor-pointer hover:bg-blue-500 hover:text-white">
+                                className="border-1 bg-black text-white px-12 py-4 rounded-2xl cursor-pointer hover:opacity-80">
                                 JOIN
                             </button>
                         </div>
