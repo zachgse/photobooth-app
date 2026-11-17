@@ -3,6 +3,7 @@
 import React from "react"
 import Webcam from "react-webcam"
 import { useRTC } from "@/app/context/RTCContext";
+import { Timer } from "./timer";
 
 interface RoomContentProps { 
     roomId: string
@@ -12,6 +13,8 @@ export default function RoomContent ({roomId}:RoomContentProps) {
     const context = useRTC();
     const webcamRef = React.useRef<Webcam|null>(null);
     const videoRef = React.useRef<HTMLVideoElement>(null);
+    const [imgSrc,setImgSrc] = React.useState(null);
+    const [time,setTime] = React.useState<number|null>(null);
 
     const handleUserMedia = async(stream: MediaStream) => {
         context?.createConnection(stream);
@@ -31,9 +34,25 @@ export default function RoomContent ({roomId}:RoomContentProps) {
 
     }, [context?.remoteStream]);
 
+    React.useEffect(() => {
+        if (time === null) return;
+
+        if (time === 0) {
+            // call capture
+            setTime(null);
+            return;
+        }
+
+        const startTimer = setTimeout(() => {
+            setTime((prev) => prev ? prev - 1 : 0)
+        }, 1000)
+
+        return () => clearTimeout(startTimer);
+    }, [time])
+
     return (
         <div className="flex flex items-center justify-center gap-24">
-            <div className="relative w-3/5">
+            <div className="relative w-full">
                 <Webcam
                     mirrored
                     audio={false}
@@ -46,6 +65,10 @@ export default function RoomContent ({roomId}:RoomContentProps) {
                     }}
                     className="w-full h-auto"
                 />
+                {time && <Timer time={time}/>}
+            </div>
+
+            <div className="relative w-full">
                 {context?.remoteStream ? (
                     <div className="w-full h-auto">
                         <video ref={videoRef}
@@ -60,16 +83,13 @@ export default function RoomContent ({roomId}:RoomContentProps) {
                         <p>No video yet.</p>
                     </div>
                 )}
-
-                {/* capture */}
-                {/* {time && (
-                <p className="absolute inset-0 flex items-center justify-center text-white text-7xl bold">
-                {time == 1 ? "Smile! 📸" : time - 1}
-                </p>
-                )} */}
+                {time && <Timer time={time}/>}
             </div>
 
-            <button className="bg-blue-500 px-12 py-4 text-white rounded-lg cursor-pointer">Take a picture</button>
+            <button onClick={() => setTime(4)}
+                className="bg-blue-500 px-12 py-4 text-white rounded-lg cursor-pointer">
+                    Take a picture
+            </button>
         </div>
     )
 }
