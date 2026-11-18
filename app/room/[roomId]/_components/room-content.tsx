@@ -5,9 +5,15 @@ import Webcam from "react-webcam"
 import { useRTC } from "@/app/context/RTCContext";
 import { Timer } from "./timer";
 import { generatePhotoboothStrip } from "./generate-photo";
+import { captureScreenshot } from "@/helper/utils";
 
 interface RoomContentProps { 
     roomId: string
+}
+
+export interface CapturedPair {
+    localPic: string;
+    remotePic: string
 }
 
 export default function RoomContent ({roomId}:RoomContentProps) {
@@ -15,7 +21,7 @@ export default function RoomContent ({roomId}:RoomContentProps) {
     const webcamRef = React.useRef<Webcam|null>(null);
     const videoRef = React.useRef<HTMLVideoElement>(null);
     const [time,setTime] = React.useState<number|null>(null);
-    const [images,setImages] = React.useState<string[]>([]);
+    const [images,setImages] = React.useState<CapturedPair[]>([]);
     const [generatedStrip,setGeneratedStrip] = React.useState<string|null>(null);
 
     const handleUserMedia = async(stream: MediaStream) => {
@@ -29,20 +35,24 @@ export default function RoomContent ({roomId}:RoomContentProps) {
 
     const capture = () => {
         const localPic = webcamRef.current?.getScreenshot();
+        const remotePic = captureScreenshot(videoRef.current);
 
-        if (!localPic) return;
+        if (!localPic || !remotePic) return;
 
         setImages((prev) => {
-            if (prev.length >= 4) return prev;
-            return [...prev, localPic];
-        });
+            return [
+                ...prev,
+                {
+                    localPic:localPic,
+                    remotePic:remotePic
+                }
+            ]
+        })
     };
 
-    const handleGenerate = async(photos:string[]) => {
+    const handleGenerate = async(photos:CapturedPair[]) => {
         const strip = await generatePhotoboothStrip({
-            photos:photos,
-            width:600,
-            height:1800
+            photos:photos
         });
 
         setGeneratedStrip(strip);
@@ -104,7 +114,7 @@ export default function RoomContent ({roomId}:RoomContentProps) {
                                 autoPlay
                                 playsInline
                                 muted
-                                className="w-full h-64 object-cover -scale-x-100 rounded-l-xl"
+                                className="w-full h-full object-cover -scale-x-100 rounded-l-xl"
                             />
                         </div>
                     ) : (
@@ -116,14 +126,19 @@ export default function RoomContent ({roomId}:RoomContentProps) {
                 </div>
             </div>
 
-            <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-2 px-16">
+            {/* DISPLAY PREVIEW IMAGES */}
+            <div className="w-full grid grid-cols-2 gap-4 px-16">
                 {images && images.map((image,i) => (
-                    <div className="h-60 w-full" key={i}>
-                        <img src={image} alt="" />
+                    <div className="flex flex col items-center justify-center w-full gap-2" key={i}>
+                        <div className="flex items-center justify-center gap-0">
+                            <img src={image.localPic} alt="" className="w-full h-auto"/>
+                            <img src={image.remotePic} alt="" className="w-full h-auto"/>
+                        </div>
                     </div>
                 ))}
             </div>
 
+            {/* GENERATED STRIP */}
             {generatedStrip && (
                 <img
                     src={generatedStrip}
@@ -132,10 +147,13 @@ export default function RoomContent ({roomId}:RoomContentProps) {
                 />
             )}
 
-            <button onClick={() => setTime(4)}
-                className="bg-black px-12 py-4 text-white rounded-lg cursor-pointer">
-                    Capture
-            </button>
+            {/* CAPTURE BUTTON */}
+            {context?.role == "host" && (
+                <button onClick={() => setTime(4)}
+                    className="bg-black px-12 py-4 text-white rounded-lg cursor-pointer">
+                        Capture
+                </button>
+            )}
         </div>
     )
 }
