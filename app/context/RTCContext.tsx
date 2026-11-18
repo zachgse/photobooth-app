@@ -5,6 +5,8 @@ import React, { createContext,useContext } from "react";
 
 interface RTCInterface {
     rtcRef: React.RefObject<RTCPeerConnection|null>;
+    dataChannel: RTCDataChannel | null;
+    setDataChannel: (dataChannel:RTCDataChannel) => void;
     createConnection: (localStream:MediaStream) => void;
     remoteStream: MediaStream | null;
     setRemoteStream: (mediaStream:MediaStream) => void;
@@ -22,6 +24,7 @@ export function RTCContextProvider({children}:{
     children: React.ReactNode
 }) {
     const rtcRef = React.useRef<RTCPeerConnection|null>(null);
+    const [dataChannel,setDataChannel] = React.useState<RTCDataChannel|null>(null);
     const [remoteStream,setRemoteStream] = React.useState<MediaStream|null>(null);
     const [role,setRole] = React.useState<Role>(null);
     
@@ -52,9 +55,11 @@ export function RTCContextProvider({children}:{
     }
 
     const handleOffer = async(roomId:string) => {
+        if (!rtcRef.current) return;
+        
         const pc = rtcRef.current;
         const roomRef = doc(db,"rooms",roomId);
-        if (!pc) return;
+        setDataChannel(rtcRef.current.createDataChannel("photobooth"));
 
         // ice candidate of host
         pc.onicecandidate = async(event) => {
@@ -97,12 +102,15 @@ export function RTCContextProvider({children}:{
     }
 
     const handleAnswer = async(roomId:string) => {
+        if (!rtcRef.current) return;
         const pc = rtcRef.current;
         const roomRef = doc(db,"rooms",roomId);
         const snapshot = await getDoc(roomRef);
         const roomData = snapshot.data();
 
-        if (!pc) return;
+        rtcRef.current.ondatachannel = (event) => {
+            setDataChannel(event.channel);
+        }
 
         pc.onicecandidate = async(event) => {
             event.candidate && await updateDoc(roomRef,{
@@ -134,6 +142,7 @@ export function RTCContextProvider({children}:{
 
     return (
         <RTCContext.Provider value={{rtcRef,
+                                    dataChannel,setDataChannel,
                                     createConnection,
                                     remoteStream,setRemoteStream,
                                     role,setRole,

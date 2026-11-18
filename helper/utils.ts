@@ -20,3 +20,8 @@ export const captureScreenshot = (video: HTMLVideoElement | null) => {
 
     return canvas.toDataURL("image/jpeg", 0.9);
 }
+
+export const compressPhoto = async(image:string) => {
+    const response = await fetch(image);
+    return response.blob();
+}
