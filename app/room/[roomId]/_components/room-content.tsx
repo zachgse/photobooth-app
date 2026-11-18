@@ -5,7 +5,7 @@ import Webcam from "react-webcam"
 import { useRTC } from "@/app/context/RTCContext";
 import { Timer } from "./timer";
 import { generatePhotoboothStrip } from "./generate-photo";
-import { captureScreenshot, compressPhoto } from "@/helper/utils";
+import { base64ToBlob, blobToBase64, captureScreenshot, compressPhoto } from "@/helper/utils";
 
 interface RoomContentProps { 
     roomId: string
@@ -33,12 +33,11 @@ export default function RoomContent ({roomId}:RoomContentProps) {
         }
     }
 
-    // only host will call this
     const capture = () => {
         const localPic = webcamRef.current?.getScreenshot();
         const remotePic = captureScreenshot(videoRef.current);
 
-        if (!localPic || !remotePic) return;
+        if (!localPic || !remotePic || context?.role != "host") return;
 
         setImages((prev) => {
             return [
@@ -49,11 +48,12 @@ export default function RoomContent ({roomId}:RoomContentProps) {
                 }
             ]
         });
-        // send 1 per transac??? //////
 
-        if (context?.role == "host") {
-            sendPhoto(images)
+        const data = {
+            localPic: remotePic,
+            remotePic: localPic
         }
+        sendPhoto(data)
     };
 
     const handleGenerate = async(photos:CapturedPair[]) => {
@@ -64,16 +64,21 @@ export default function RoomContent ({roomId}:RoomContentProps) {
         setGeneratedStrip(strip);
     }
 
-    // call everytime capture
-    const sendPhoto = async(images:CapturedPair[]) => {
+    const sendPhoto = async(images:CapturedPair) => {
         if (context?.dataChannel?.readyState !== "open") return;
-        images.map
-        // map
-        // send
-        // const blob = await compressPhoto(photo);
-        // const buffer = await blob.arrayBuffer();
-        
-        // context.dataRef.current.send(buffer);
+
+        const local = await compressPhoto(images.localPic);
+        const remote = await compressPhoto(images.remotePic);
+
+        const data = {
+            type: "PHOTO",
+            photo: {
+                local: await blobToBase64(local),
+                remote: await blobToBase64(remote)
+            }
+        }
+
+        context.dataChannel.send(JSON.stringify(data));
     }
 
     React.useEffect(() => {
@@ -106,24 +111,22 @@ export default function RoomContent ({roomId}:RoomContentProps) {
         if (images && images.length == 4) handleGenerate(images);
     }, [images]);
 
-    // listener for guest 
     React.useEffect(() => {
         const channel = context?.dataChannel;
-
         if (context?.role == "host" || !channel) return;
 
         const handleMessage = (event:MessageEvent) => {
             const data = JSON.parse(event.data);
 
-            // start capture event
             if (data.type === "PHOTO") {
-                console.log("Received photo is: ", data.photo);
-                // set photo here
+                const local = base64ToBlob(data.photo.local);
+                const remote = base64ToBlob(data.photo.remote);
+    
                 setImages((prev)=> [
                     ...prev,
                     {
-                        localPic:data.photo.local,
-                        remotePic:data.photo.remote
+                        localPic: URL.createObjectURL(local),
+                        remotePic: URL.createObjectURL(remote)
                     }
                 ]);
             }
