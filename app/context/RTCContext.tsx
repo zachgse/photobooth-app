@@ -5,8 +5,6 @@ import React, { createContext,useContext } from "react";
 
 interface RTCInterface {
     rtcRef: React.RefObject<RTCPeerConnection|null>;
-    dataChannel: RTCDataChannel | null;
-    setDataChannel: (dataChannel:RTCDataChannel) => void;
     createConnection: (localStream:MediaStream) => void;
     remoteStream: MediaStream | null;
     setRemoteStream: (mediaStream:MediaStream) => void;
@@ -24,7 +22,6 @@ export function RTCContextProvider({children}:{
     children: React.ReactNode
 }) {
     const rtcRef = React.useRef<RTCPeerConnection|null>(null);
-    const [dataChannel,setDataChannel] = React.useState<RTCDataChannel|null>(null);
     const [remoteStream,setRemoteStream] = React.useState<MediaStream|null>(null);
     const [role,setRole] = React.useState<Role>(null);
     
@@ -59,7 +56,6 @@ export function RTCContextProvider({children}:{
         
         const pc = rtcRef.current;
         const roomRef = doc(db,"rooms",roomId);
-        setDataChannel(rtcRef.current.createDataChannel("photobooth"));
 
         // ice candidate of host
         pc.onicecandidate = async(event) => {
@@ -108,9 +104,6 @@ export function RTCContextProvider({children}:{
         const snapshot = await getDoc(roomRef);
         const roomData = snapshot.data();
 
-        rtcRef.current.ondatachannel = (event) => {
-            setDataChannel(event.channel);
-        }
 
         pc.onicecandidate = async(event) => {
             event.candidate && await updateDoc(roomRef,{
@@ -141,9 +134,7 @@ export function RTCContextProvider({children}:{
     }
 
     return (
-        <RTCContext.Provider value={{rtcRef,
-                                    dataChannel,setDataChannel,
-                                    createConnection,
+        <RTCContext.Provider value={{rtcRef, createConnection,
                                     remoteStream,setRemoteStream,
                                     role,setRole,
                                     handleOffer,handleAnswer}}>

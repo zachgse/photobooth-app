@@ -5,24 +5,31 @@ import Webcam from "react-webcam"
 import { useRTC } from "@/app/context/RTCContext";
 import { Timer } from "./timer";
 import { generatePhotoboothStrip } from "./generate-photo";
-import { base64ToBlob, blobToBase64, captureScreenshot, compressPhoto } from "@/helper/utils";
+import { captureScreenshot } from "@/helper/utils";
+import { doc, updateDoc } from "firebase/firestore";
+import { useServerClock } from "@/helper/useServerClock";
+import { db } from "@/lib/firebase";
+import { useCaptureSync } from "@/helper/useCaptureSync";
 
 interface RoomContentProps { 
-    roomId: string
+    roomId: string;
 }
 
 export interface CapturedPair {
     localPic: string;
-    remotePic: string
+    remotePic: string;
 }
 
 export default function RoomContent ({roomId}:RoomContentProps) {
+    const roomRef = doc(db,"rooms",roomId);
     const context = useRTC();
     const webcamRef = React.useRef<Webcam|null>(null);
     const videoRef = React.useRef<HTMLVideoElement>(null);
     const [time,setTime] = React.useState<number|null>(null);
     const [images,setImages] = React.useState<CapturedPair[]>([]);
     const [generatedStrip,setGeneratedStrip] = React.useState<string|null>(null);
+    const { isSynced,getServerTime } = useServerClock();
+    const PHOTO_TIME = 4000;
 
     const handleUserMedia = async(stream: MediaStream) => {
         context?.createConnection(stream);
@@ -33,28 +40,35 @@ export default function RoomContent ({roomId}:RoomContentProps) {
         }
     }
 
-    const capture = () => {
+    const handleCapture = async () => {
+        if (!isSynced) return;
+
+        const serverNow = getServerTime();
+
+        if (serverNow === null) return;
+
+        await updateDoc(roomRef, {
+            captureEvent: {
+                id: crypto.randomUUID(),
+                captureAt: serverNow + PHOTO_TIME
+            }
+        });
+    };
+
+    const capturePhoto = React.useCallback(async () => {
         const localPic = webcamRef.current?.getScreenshot();
         const remotePic = captureScreenshot(videoRef.current);
 
-        if (!localPic || !remotePic || context?.role != "host") return;
+        if (!localPic || !remotePic) return;
 
-        setImages((prev) => {
-            return [
-                ...prev,
-                {
-                    localPic:localPic,
-                    remotePic:remotePic
-                }
-            ]
-        });
-
-        const data = {
-            localPic: remotePic,
-            remotePic: localPic
-        }
-        sendPhoto(data)
-    };
+        setImages((prev) => [
+            ...prev,
+            {
+                localPic,
+                remotePic
+            }
+        ]);
+    }, []);
 
     const handleGenerate = async(photos:CapturedPair[]) => {
         const strip = await generatePhotoboothStrip({
@@ -62,23 +76,6 @@ export default function RoomContent ({roomId}:RoomContentProps) {
         });
 
         setGeneratedStrip(strip);
-    }
-
-    const sendPhoto = async(images:CapturedPair) => {
-        if (context?.dataChannel?.readyState !== "open") return;
-
-        const local = await compressPhoto(images.localPic);
-        const remote = await compressPhoto(images.remotePic);
-
-        const data = {
-            type: "PHOTO",
-            photo: {
-                local: await blobToBase64(local),
-                remote: await blobToBase64(remote)
-            }
-        }
-
-        context.dataChannel.send(JSON.stringify(data));
     }
 
     React.useEffect(() => {
@@ -91,60 +88,11 @@ export default function RoomContent ({roomId}:RoomContentProps) {
     }, [context?.remoteStream]);
 
     React.useEffect(() => {
-        if (time === null) return;
-
-        if (time === 0) {
-            capture();
-            setTime(null);
-            return;
-        }
-
-        const startTimer = setTimeout(() => {
-            setTime((prev) => prev ? prev - 1 : 0)
-        }, 1000)
-
-        return () => clearTimeout(startTimer);
-    }, [time]);
-
-    React.useEffect(() => {
         console.log("images length is ", images);
         if (images && images.length == 4) handleGenerate(images);
     }, [images]);
 
-    React.useEffect(() => {
-        const channel = context?.dataChannel;
-        if (context?.role == "host" || !channel) return;
-
-        const handleMessage = (event:MessageEvent) => {
-            const data = JSON.parse(event.data);
-
-            if (data.type === "PHOTO") {
-                const local = base64ToBlob(data.photo.local);
-                const remote = base64ToBlob(data.photo.remote);
-    
-                setImages((prev)=> [
-                    ...prev,
-                    {
-                        localPic: URL.createObjectURL(local),
-                        remotePic: URL.createObjectURL(remote)
-                    }
-                ]);
-            }
-        }
-
-        const handleOpen = () => {
-            console.log("Data channel connected in guest");
-        }
-    
-        channel.addEventListener("message", handleMessage);
-        channel.addEventListener("open", handleOpen);
-
-        return () => {
-            channel.removeEventListener("message", handleMessage);
-            channel.removeEventListener("open", handleOpen);
-        }
-        
-    },[context?.dataChannel])
+    useCaptureSync({roomId,getServerTime,capture:capturePhoto,onCountdownChange:setTime});
 
     return (
         <div className="lg:w-3/5 md:w-4/5 min-h-screen flex flex-col gap-8 items-center justify-center">
@@ -162,25 +110,23 @@ export default function RoomContent ({roomId}:RoomContentProps) {
                         }}
                         className="w-full h-auto rounded-r-xl"
                     />
-                    {time && <Timer time={time}/>}
+                    {time !== null && <Timer time={time} />}
                 </div>
 
                 <div className="relative w-full">
                     {context?.remoteStream ? (
-                        <div className="w-full h-auto">
-                            <video ref={videoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                className="w-full h-full object-cover -scale-x-100 rounded-l-xl"
-                            />
-                        </div>
+                    <video ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="w-full h-96 object-cover -scale-x-100 rounded-l-xl"
+                        />
                     ) : (
                         <div className="bg-gray-300 w-full h-full flex flex-col justify-center items-center rounded-r-xl">
                             <p>No video yet.</p>
                         </div>
                     )}
-                    {time && <Timer time={time}/>}
+                    {time !== null && <Timer time={time} />}
                 </div>
             </div>
 
@@ -207,7 +153,7 @@ export default function RoomContent ({roomId}:RoomContentProps) {
 
             {/* CAPTURE BUTTON */}
             {context?.role == "host" && (
-                <button onClick={() => setTime(4)}
+                <button onClick={handleCapture}
                     className="bg-black px-12 py-4 text-white rounded-lg cursor-pointer">
                         Capture
                 </button>
