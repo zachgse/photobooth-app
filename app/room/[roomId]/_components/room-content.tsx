@@ -52,6 +52,14 @@ export default function RoomContent ({roomId}:RoomContentProps) {
 
         if (serverNow === null) return;
 
+        const captureAt = serverNow + PHOTO_TIME;
+
+        console.log("HOST: Writing capture event", {
+            localTime: Date.now(),
+            serverTime: serverNow,
+            captureAt
+        });
+
         await updateDoc(roomRef, {
             captureEvent: {
                 id: crypto.randomUUID(),
@@ -61,6 +69,10 @@ export default function RoomContent ({roomId}:RoomContentProps) {
     };
 
     const capturePhoto = React.useCallback(async () => {
+        console.log("CAPTURING PHOTO", {
+            localTime: Date.now(),
+            serverTime: getServerTime()
+        });
         const localPic = webcamRef.current?.getScreenshot();
         const remotePic = captureScreenshot(videoRef.current);
 

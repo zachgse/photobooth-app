@@ -14,6 +14,16 @@ export function useServerClock() {
         const unsubscribe = onValue(offsetRef, (snapshot) => {
             const serverOffset = snapshot.val();
 
+            console.log("SERVER CLOCK OFFSET UPDATED", {
+                localTime: Date.now(),
+                offset: serverOffset,
+                estimatedServerTime:
+                    typeof serverOffset === "number"
+                        ? Date.now() + serverOffset
+                        : null,
+                isSynced: typeof serverOffset === "number"
+            });
+
             if (typeof serverOffset === "number") {
                 setOffset(serverOffset);
             }

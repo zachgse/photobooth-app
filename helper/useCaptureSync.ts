@@ -51,12 +51,25 @@ export function useCaptureSync({
                 | CaptureEvent
                 | undefined;
 
+            console.log("FIRESTORE SNAPSHOT RECEIVED", {
+                localTime: Date.now(),
+                serverTime: serverTimeRef.current(),
+                fromCache: snapshot.metadata.fromCache,
+                hasPendingWrites: snapshot.metadata.hasPendingWrites,
+                event
+            });
+
             if (initialSnapshot) {
                 initialSnapshot = false;
 
                 if (event?.id) {
                     lastCaptureId.current = event.id;
                 }
+
+                console.log("INITIAL SNAPSHOT", {
+                    eventId: event?.id,
+                    skipped: true
+                });
 
                 return;
             }
@@ -69,6 +82,17 @@ export function useCaptureSync({
 
             if (timeout) clearTimeout(timeout);
 
+            // Log when a new capture event arrives
+            console.log("NEW CAPTURE EVENT RECEIVED", {
+                localTime: Date.now(),
+                serverTime: serverTimeRef.current(),
+                captureAt: event.captureAt,
+                remaining:
+                    event.captureAt - (serverTimeRef.current() ?? 0)
+            });
+
+            let firstSchedule = true;
+
             const scheduleCapture = () => {
                 const serverNow = serverTimeRef.current();
 
@@ -79,7 +103,25 @@ export function useCaptureSync({
 
                 const remaining = event.captureAt - serverNow;
 
+                if (firstSchedule) {
+                    console.log("CAPTURE SCHEDULING STARTED", {
+                        localTime: Date.now(),
+                        serverNow,
+                        captureAt: event.captureAt,
+                        remaining
+                    });
+
+                    firstSchedule = false;
+                }
+
                 if (remaining <= 0) {
+                    console.log("CAPTURE TIMER FINISHED", {
+                        localTime: Date.now(),
+                        serverNow,
+                        captureAt: event.captureAt,
+                        drift: serverNow - event.captureAt
+                    });
+
                     onCountdownRef.current(null);
                     captureRef.current();
                     return;
@@ -91,6 +133,8 @@ export function useCaptureSync({
             };
 
             scheduleCapture();
+        }, (error) => {
+            console.error("CAPTURE SNAPSHOT ERROR", error);
         });
 
         return () => {
