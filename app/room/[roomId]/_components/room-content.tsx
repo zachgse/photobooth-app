@@ -46,13 +46,13 @@ export default function RoomContent ({roomId}:RoomContentProps) {
 
     const handleCapture = async () => {
         if (!isSynced) return;
-        setLoading(true);
-
+        
         const serverNow = getServerTime();
 
         if (serverNow === null) return;
 
         const captureAt = serverNow + PHOTO_TIME;
+        setLoading(true);
 
         console.log("HOST: Writing capture event", {
             localTime: Date.now(),
@@ -97,7 +97,13 @@ export default function RoomContent ({roomId}:RoomContentProps) {
         setGeneratedStrip(strip);
     }
 
-    const handleRetake = () => {
+    const handleRetake = async() => {
+        await updateDoc(roomRef,{
+            retakeEvent: {
+                id: crypto.randomUUID(),
+                initiatedBy: context?.role ?? "guest"
+            }
+        });
         setImages((prev)=>prev.slice(0,-1));
     }
 
@@ -114,7 +120,12 @@ export default function RoomContent ({roomId}:RoomContentProps) {
         if (images && images.length == 4) handleGenerate(images);
     }, [images]);
 
-    useCaptureSync({roomId,getServerTime,capture:capturePhoto,onCountdownChange:setTime});
+    useCaptureSync({roomId,
+                    role: context?.role ?? "guest",
+                    getServerTime,
+                    capture:capturePhoto,
+                    onCountdownChange:setTime,
+                    onRetake:handleRetake});
 
     return (
         !generatedStrip ? (

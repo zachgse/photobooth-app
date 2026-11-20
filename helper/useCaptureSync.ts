@@ -5,28 +5,42 @@ import { useEffect, useRef } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
+type Role = "host" | "guest";
+
 interface CaptureEvent {
     id: string;
     captureAt: number;
 }
 
+interface RetakeEvent {
+    id: string;
+    initiatedBy: Role;
+}
+
 interface Props {
     roomId: string;
+    role: Role;
     getServerTime: () => number | null;
     capture: () => void | Promise<void>;
     onCountdownChange: (time: number | null) => void;
+    onRetake: () => void | Promise<void>;
 }
 
 export function useCaptureSync({
     roomId,
+    role,
     getServerTime,
     capture,
-    onCountdownChange
+    onCountdownChange,
+    onRetake
 }: Props) {
     const lastCaptureId = useRef<string | null>(null);
+    const lastRetakeId = useRef<string | null>(null);
+
     const captureRef = useRef(capture);
     const serverTimeRef = useRef(getServerTime);
     const onCountdownRef = useRef(onCountdownChange);
+    const onRetakeRef = useRef(onRetake);
 
     useEffect(() => {
         onCountdownRef.current = onCountdownChange;
@@ -41,14 +55,24 @@ export function useCaptureSync({
     }, [getServerTime]);
 
     useEffect(() => {
+        onRetakeRef.current = onRetake;
+    }, [onRetake]);
+
+    useEffect(() => {
         const roomRef = doc(db, "rooms", roomId);
 
         let initialSnapshot = true;
         let timeout: ReturnType<typeof setTimeout> | null = null;
 
         const unsubscribe = onSnapshot(roomRef, (snapshot) => {
-            const event = snapshot.data()?.captureEvent as
+            const data = snapshot.data();
+
+            const event = data?.captureEvent as
                 | CaptureEvent
+                | undefined;
+
+            const retakeEvent = data?.retakeEvent as
+                | RetakeEvent
                 | undefined;
 
             console.log("FIRESTORE SNAPSHOT RECEIVED", {
@@ -56,24 +80,48 @@ export function useCaptureSync({
                 serverTime: serverTimeRef.current(),
                 fromCache: snapshot.metadata.fromCache,
                 hasPendingWrites: snapshot.metadata.hasPendingWrites,
-                event
+                event,
+                retakeEvent
             });
 
+            // RETAKE EVENT
             if (initialSnapshot) {
-                initialSnapshot = false;
-
                 if (event?.id) {
                     lastCaptureId.current = event.id;
                 }
 
+                if (retakeEvent?.id) {
+                    lastRetakeId.current = retakeEvent.id;
+                }
+
+                initialSnapshot = false;
+
                 console.log("INITIAL SNAPSHOT", {
                     eventId: event?.id,
+                    retakeEventId: retakeEvent?.id,
                     skipped: true
                 });
 
                 return;
             }
 
+            if (
+                retakeEvent?.id &&
+                retakeEvent.id !== lastRetakeId.current
+            ) {
+                lastRetakeId.current = retakeEvent.id;
+
+                if (retakeEvent.initiatedBy !== role) {
+                    console.log("RETAKE EVENT RECEIVED", {
+                        retakeEvent,
+                        role
+                    });
+
+                    onRetakeRef.current();
+                }
+            }
+
+            // EXISTING CAPTURE EVENT LOGIC
             if (!event?.id || !event.captureAt) return;
 
             if (event.id === lastCaptureId.current) return;
@@ -82,7 +130,6 @@ export function useCaptureSync({
 
             if (timeout) clearTimeout(timeout);
 
-            // Log when a new capture event arrives
             console.log("NEW CAPTURE EVENT RECEIVED", {
                 localTime: Date.now(),
                 serverTime: serverTimeRef.current(),
@@ -142,5 +189,5 @@ export function useCaptureSync({
 
             if (timeout) clearTimeout(timeout);
         };
-    }, [roomId]);
+    }, [roomId, role]);
 }
