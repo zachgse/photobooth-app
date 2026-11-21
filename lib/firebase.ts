@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore } from "firebase/firestore";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
@@ -13,9 +13,10 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-const app = getApps().length
-  ? getApp()
-  : initializeApp(firebaseConfig);
+const isNewApp = getApps().length === 0;
+const app = isNewApp ? initializeApp(firebaseConfig) : getApp();
 
-export const db = getFirestore(app);
+export const db = isNewApp
+  ? initializeFirestore(app, { experimentalForceLongPolling: true })
+  : getFirestore(app);
 export const rtdb = getDatabase(app);
