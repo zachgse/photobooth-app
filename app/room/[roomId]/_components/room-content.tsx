@@ -120,9 +120,9 @@ export default function RoomContent({ roomId }: RoomContentProps) {
     };
 
     const handleGenerate = async (photos: CapturedPair[]) => {
-        customToast.info("Generating photobooth strip",{
+        customToast.success("Photobooth strip generated! Enjoy <3",{
             toastId:TOAST_ID,
-            autoClose:generatedStrip ? 2000 : false
+            autoClose: 3000
         });
         
         const strip = await generatePhotoboothStrip({
@@ -177,7 +177,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                 if (!ready) {
                     customToast.info("Waiting for participants", {
                         toastId:TOAST_ID,
-                        autoClose:false
+                        autoClose:ready 
                     });
                 } 
             },
