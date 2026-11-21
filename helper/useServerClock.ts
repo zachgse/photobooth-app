@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { onValue, ref } from "firebase/database";
 import { rtdb } from "@/lib/firebase";
 
@@ -14,22 +15,36 @@ export function useServerClock() {
     const connectedRef = useRef(false);
     const offsetRef = useRef<number | null>(null);
 
+    const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     useEffect(() => {
-        let syncTimer: ReturnType<typeof setTimeout> | null = null;
+        const clearSyncTimer = () => {
+            if (syncTimerRef.current) {
+                clearTimeout(syncTimerRef.current);
+                syncTimerRef.current = null;
+            }
+        };
 
         const scheduleSync = () => {
-            if (!connectedRef.current || offsetRef.current === null) {
+            if (
+                !connectedRef.current ||
+                offsetRef.current === null
+            ) {
                 return;
             }
 
+            clearSyncTimer();
             setIsSynced(false);
 
-            if (syncTimer) clearTimeout(syncTimer);
-
-            syncTimer = setTimeout(() => {
-                if (connectedRef.current && offsetRef.current !== null) {
+            syncTimerRef.current = setTimeout(() => {
+                if (
+                    connectedRef.current &&
+                    offsetRef.current !== null
+                ) {
                     setIsSynced(true);
                 }
+
+                syncTimerRef.current = null;
             }, SYNC_SETTLE_TIME);
         };
 
@@ -42,12 +57,8 @@ export function useServerClock() {
                 setIsConnected(connected);
 
                 if (!connected) {
+                    clearSyncTimer();
                     setIsSynced(false);
-
-                    if (syncTimer) {
-                        clearTimeout(syncTimer);
-                        syncTimer = null;
-                    }
                 } else {
                     scheduleSync();
                 }
@@ -69,12 +80,8 @@ export function useServerClock() {
                 if (valid) {
                     scheduleSync();
                 } else {
+                    clearSyncTimer();
                     setIsSynced(false);
-
-                    if (syncTimer) {
-                        clearTimeout(syncTimer);
-                        syncTimer = null;
-                    }
                 }
             }
         );
@@ -82,18 +89,20 @@ export function useServerClock() {
         return () => {
             unsubscribeConnection();
             unsubscribeOffset();
-
-            if (syncTimer) clearTimeout(syncTimer);
+            clearSyncTimer();
         };
     }, []);
 
-    const getServerTime = () => {
-        if (!isConnected || !isSynced || offset === null) {
+    const getServerTime = useCallback(() => {
+        if (
+            !connectedRef.current ||
+            offsetRef.current === null
+        ) {
             return null;
         }
 
-        return Date.now() + offset;
-    };
+        return Date.now() + offsetRef.current;
+    }, []);
 
     return {
         offset,

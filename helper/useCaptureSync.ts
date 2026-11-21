@@ -63,131 +63,178 @@ export function useCaptureSync({
 
         let initialSnapshot = true;
         let timeout: ReturnType<typeof setTimeout> | null = null;
+        let cancelSchedule: (() => void) | null = null;
 
-        const unsubscribe = onSnapshot(roomRef, (snapshot) => {
-            const data = snapshot.data();
+        const unsubscribe = onSnapshot(
+            roomRef,
+            (snapshot) => {
+                const data = snapshot.data();
 
-            const event = data?.captureEvent as
-                | CaptureEvent
-                | undefined;
+                const event = data?.captureEvent as
+                    | CaptureEvent
+                    | undefined;
 
-            const retakeEvent = data?.retakeEvent as
-                | RetakeEvent
-                | undefined;
+                const retakeEvent = data?.retakeEvent as
+                    | RetakeEvent
+                    | undefined;
 
-            console.log("FIRESTORE SNAPSHOT RECEIVED", {
-                localTime: Date.now(),
-                serverTime: serverTimeRef.current(),
-                fromCache: snapshot.metadata.fromCache,
-                hasPendingWrites: snapshot.metadata.hasPendingWrites,
-                event,
-                retakeEvent
-            });
-
-            // RETAKE EVENT
-            if (initialSnapshot) {
-                if (event?.id) {
-                    lastCaptureId.current = event.id;
-                }
-
-                if (retakeEvent?.id) {
-                    lastRetakeId.current = retakeEvent.id;
-                }
-
-                initialSnapshot = false;
-
-                console.log("INITIAL SNAPSHOT", {
-                    eventId: event?.id,
-                    retakeEventId: retakeEvent?.id,
-                    skipped: true
+                console.log("FIRESTORE SNAPSHOT RECEIVED", {
+                    localTime: Date.now(),
+                    serverTime: serverTimeRef.current(),
+                    fromCache: snapshot.metadata.fromCache,
+                    hasPendingWrites: snapshot.metadata.hasPendingWrites,
+                    event,
+                    retakeEvent
                 });
 
-                return;
-            }
+                // INITIAL SNAPSHOT
+                if (initialSnapshot) {
+                    if (event?.id) {
+                        lastCaptureId.current = event.id;
+                    }
 
-            if (
-                retakeEvent?.id &&
-                retakeEvent.id !== lastRetakeId.current
-            ) {
-                lastRetakeId.current = retakeEvent.id;
+                    if (retakeEvent?.id) {
+                        lastRetakeId.current = retakeEvent.id;
+                    }
 
-                if (retakeEvent.initiatedBy !== role) {
-                    console.log("RETAKE EVENT RECEIVED", {
-                        retakeEvent,
-                        role
+                    initialSnapshot = false;
+
+                    console.log("INITIAL SNAPSHOT", {
+                        eventId: event?.id,
+                        retakeEventId: retakeEvent?.id,
+                        skipped: true
                     });
 
-                    onRetakeRef.current();
-                }
-            }
-
-            // EXISTING CAPTURE EVENT LOGIC
-            if (!event?.id || !event.captureAt) return;
-
-            if (event.id === lastCaptureId.current) return;
-
-            lastCaptureId.current = event.id;
-
-            if (timeout) clearTimeout(timeout);
-
-            console.log("NEW CAPTURE EVENT RECEIVED", {
-                localTime: Date.now(),
-                serverTime: serverTimeRef.current(),
-                captureAt: event.captureAt,
-                remaining:
-                    event.captureAt - (serverTimeRef.current() ?? 0)
-            });
-
-            let firstSchedule = true;
-
-            const scheduleCapture = () => {
-                const serverNow = serverTimeRef.current();
-
-                if (serverNow === null) {
-                    timeout = setTimeout(scheduleCapture, 100);
                     return;
                 }
 
-                const remaining = event.captureAt - serverNow;
+                // RETAKE EVENT
+                if (
+                    retakeEvent?.id &&
+                    retakeEvent.id !== lastRetakeId.current
+                ) {
+                    lastRetakeId.current = retakeEvent.id;
 
-                if (firstSchedule) {
-                    console.log("CAPTURE SCHEDULING STARTED", {
-                        localTime: Date.now(),
-                        serverNow,
-                        captureAt: event.captureAt,
-                        remaining
-                    });
+                    if (retakeEvent.initiatedBy !== role) {
+                        console.log("RETAKE EVENT RECEIVED", {
+                            retakeEvent,
+                            role
+                        });
 
-                    firstSchedule = false;
+                        void Promise.resolve(
+                            onRetakeRef.current()
+                        ).catch(console.error);
+                    }
                 }
 
-                if (remaining <= 0) {
-                    console.log("CAPTURE TIMER FINISHED", {
-                        localTime: Date.now(),
-                        serverNow,
-                        captureAt: event.captureAt,
-                        drift: serverNow - event.captureAt
-                    });
+                // CAPTURE EVENT
+                if (!event?.id || !event.captureAt) return;
 
-                    onCountdownRef.current(null);
-                    captureRef.current();
-                    return;
-                }
+                if (event.id === lastCaptureId.current) return;
 
-                onCountdownRef.current(Math.ceil(remaining / 1000));
+                lastCaptureId.current = event.id;
 
-                timeout = setTimeout(scheduleCapture, 100);
-            };
+                // Cancel any previous capture schedule
+                cancelSchedule?.();
 
-            scheduleCapture();
-        }, (error) => {
-            console.error("CAPTURE SNAPSHOT ERROR", error);
-        });
+                console.log("NEW CAPTURE EVENT RECEIVED", {
+                    localTime: Date.now(),
+                    serverTime: serverTimeRef.current(),
+                    captureAt: event.captureAt,
+                    remaining:
+                        event.captureAt -
+                        (serverTimeRef.current() ?? 0)
+                });
+
+                let cancelled = false;
+                let captureStarted = false;
+                let firstSchedule = true;
+
+                cancelSchedule = () => {
+                    cancelled = true;
+
+                    if (timeout) {
+                        clearTimeout(timeout);
+                        timeout = null;
+                    }
+                };
+
+                const scheduleCapture = () => {
+                    if (cancelled || captureStarted) return;
+
+                    const serverNow = serverTimeRef.current();
+
+                    // Wait until the server clock is available
+                    if (serverNow === null) {
+                        timeout = setTimeout(scheduleCapture, 100);
+                        return;
+                    }
+
+                    const remaining = event.captureAt - serverNow;
+
+                    if (firstSchedule) {
+                        console.log("CAPTURE SCHEDULING STARTED", {
+                            localTime: Date.now(),
+                            serverNow,
+                            captureAt: event.captureAt,
+                            remaining
+                        });
+
+                        firstSchedule = false;
+                    }
+
+                    // Capture when the scheduled server time is reached
+                    if (remaining <= 0) {
+                        captureStarted = true;
+
+                        console.log("CAPTURE TIMER FINISHED", {
+                            localTime: Date.now(),
+                            serverNow,
+                            captureAt: event.captureAt,
+                            drift: serverNow - event.captureAt
+                        });
+
+                        onCountdownRef.current(null);
+
+                        void Promise.resolve(
+                            captureRef.current()
+                        ).catch(console.error);
+
+                        return;
+                    }
+
+                    onCountdownRef.current(
+                        Math.ceil(remaining / 1000)
+                    );
+
+                    // Wake up at the next countdown boundary
+                    // instead of polling every 100ms
+                    const nextCheck = Math.min(
+                        remaining,
+                        remaining % 1000 || 1000
+                    );
+
+                    timeout = setTimeout(
+                        scheduleCapture,
+                        nextCheck
+                    );
+                };
+
+                scheduleCapture();
+            },
+            (error) => {
+                console.error("CAPTURE SNAPSHOT ERROR", error);
+            }
+        );
 
         return () => {
-            unsubscribe();
+            cancelSchedule?.();
 
-            if (timeout) clearTimeout(timeout);
+            if (timeout) {
+                clearTimeout(timeout);
+            }
+
+            unsubscribe();
         };
     }, [roomId, role]);
 }
