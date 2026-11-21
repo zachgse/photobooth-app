@@ -53,14 +53,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
         clockSync?.host === true &&
         clockSync?.guest === true;
 
-    // Keep your existing role fallback behavior
-    React.useEffect(() => {
-        if (context && !context.role) {
-            context.role = "guest";
-        }
-    }, []);
-
-    // WEBRTC
     const handleUserMedia = async (stream: MediaStream) => {
         context?.createConnection(stream);
 
@@ -71,178 +63,71 @@ export default function RoomContent({ roomId }: RoomContentProps) {
         }
     };
 
-    // CAPTURE EVENT
     const handleCapture = async () => {
         if (!canCapture || loading) return;
 
         const serverNow = getServerTime();
 
-        if (serverNow === null) {
-            console.warn("CAPTURE ABORTED: Server clock unavailable");
-            return;
-        }
-
-        const captureAt = serverNow + PHOTO_TIME;
-        const captureEventId = crypto.randomUUID();
+        if (serverNow === null) return;
 
         setLoading(true);
 
-        const writeStartedAt = Date.now();
-
-        console.log("CAPTURE WRITE STARTED", {
-            eventId: captureEventId,
-            role: context?.role,
-            localTime: writeStartedAt,
-            serverTime: serverNow,
-            captureAt,
-            photoTime: PHOTO_TIME,
-            isSynced,
-            canCapture
+        await updateDoc(roomRef, {
+            captureEvent: {
+                id: crypto.randomUUID(),
+                captureAt: serverNow + PHOTO_TIME
+            }
         });
 
-        try {
-            await updateDoc(roomRef, {
-                captureEvent: {
-                    id: captureEventId,
-                    captureAt
-                }
-            });
-
-            const writeAcknowledgedAt = Date.now();
-
-            console.log("CAPTURE WRITE ACKNOWLEDGED", {
-                eventId: captureEventId,
-                localTime: writeAcknowledgedAt,
-                serverTime: getServerTime(),
-                duration: writeAcknowledgedAt - writeStartedAt
-            });
-
-        } catch (error) {
-            console.error("CAPTURE WRITE FAILED", {
-                eventId: captureEventId,
-                localTime: Date.now(),
-                duration: Date.now() - writeStartedAt,
-                error
-            });
-
-            setLoading(false);
-            toast.error("Unable to start capture. Please try again.");
-        }
+        setLoading(false);
     };
 
-
-    // CAPTURE PHOTO
     const capturePhoto = React.useCallback(async () => {
         const video = videoRef.current;
+        const localPic = webcamRef.current?.getScreenshot();
+        const remotePic = captureScreenshot(video);
+        if (!localPic || !remotePic) return;
 
-        console.log("CAPTURING PHOTO", {
-            localTime: Date.now(),
-            serverTime: getServerTime(),
-            remoteVideo: {
-                readyState: video?.readyState,
-                videoWidth: video?.videoWidth,
-                videoHeight: video?.videoHeight,
-                paused: video?.paused
+        setImages((prev) => [
+            ...prev,
+            {
+                localPic,
+                remotePic
             }
-        });
-
-        try {
-            const localPic = webcamRef.current?.getScreenshot();
-            const remotePic = captureScreenshot(video);
-
-            if (!localPic || !remotePic) {
-                console.error("PHOTO CAPTURE FAILED", {
-                    localPicAvailable: !!localPic,
-                    remotePicAvailable: !!remotePic,
-                    remoteReadyState: video?.readyState,
-                    remoteVideoWidth: video?.videoWidth,
-                    remoteVideoHeight: video?.videoHeight
-                });
-
-                return;
-            }
-
-            setImages((prev) => [
-                ...prev,
-                {
-                    localPic,
-                    remotePic
-                }
-            ]);
-        } catch (error) {
-            console.error("PHOTO CAPTURE ERROR", error);
-        } finally {
-            setLoading(false);
-        }
+        ]);
     }, [getServerTime]);
 
-    // GENERATE PHOTO STRIP
     const handleGenerate = async (photos: CapturedPair[]) => {
-        try {
-            const strip = await generatePhotoboothStrip({
-                photos
-            });
+        const strip = await generatePhotoboothStrip({
+            photos
+        });
 
-            setGeneratedStrip(strip);
-        } catch (error) {
-            console.error("PHOTO STRIP GENERATION ERROR", error);
-            toast.error("Unable to generate your photobooth strip.");
-        }
+        setGeneratedStrip(strip);
     };
 
-    // APPLY RETAKE LOCALLY ONLY
     const applyRetake = React.useCallback(() => {
         setImages((prev) => prev.slice(0, -1));
     }, []);
 
-    // LOCAL RETAKE: PUBLISH EVENT + APPLY LOCALLY
     const handleRetake = async () => {
         if (images.length < 1 || loading) return;
 
-        const retakeEventId = crypto.randomUUID();
-        const writeStartedAt = Date.now();
-
-        console.log("RETAKE WRITE STARTED", {
-            eventId: retakeEventId,
-            role: context?.role ?? "guest",
-            localTime: writeStartedAt,
-            serverTime: getServerTime(),
-            imagesCount: images.length
+        await updateDoc(roomRef, {
+            retakeEvent: {
+                id: crypto.randomUUID(),
+                initiatedBy: context?.role ?? "guest"
+            }
         });
 
-        try {
-            await updateDoc(roomRef, {
-                retakeEvent: {
-                    id: retakeEventId,
-                    initiatedBy: context?.role ?? "guest"
-                }
-            });
-
-            const writeAcknowledgedAt = Date.now();
-
-            console.log("RETAKE WRITE ACKNOWLEDGED", {
-                eventId: retakeEventId,
-                localTime: writeAcknowledgedAt,
-                serverTime: getServerTime(),
-                duration: writeAcknowledgedAt - writeStartedAt
-            });
-
-            applyRetake();
-
-        } catch (error) {
-            console.error("RETAKE WRITE FAILED", {
-                eventId: retakeEventId,
-                localTime: Date.now(),
-                duration: Date.now() - writeStartedAt,
-                error
-            });
-
-            toast.error("Unable to retake the last photo.");
-        }
+        applyRetake();
     };
 
+    React.useEffect(() => {
+        if (context && !context.role) {
+            context.role = "guest";
+        }
+    }, []);
 
-    // REMOTE VIDEO STREAM
     React.useEffect(() => {
         const video = videoRef.current;
 
@@ -255,7 +140,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
         });
     }, [context?.remoteStream]);
 
-    // PUBLISH CLOCK READINESS
     React.useEffect(() => {
         const updateReadiness = async () => {
             const role = context?.role;
@@ -272,7 +156,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
         });
     }, [roomId, context?.role, isSynced]);
 
-    // SUBSCRIBE TO BOTH PARTICIPANTS' CLOCK READINESS
     React.useEffect(() => {
         toast.info("Preparing the photobooth...", {
             toastId: TOAST_ID,
@@ -323,14 +206,12 @@ export default function RoomContent({ roomId }: RoomContentProps) {
         };
     }, [roomId]);
 
-    // GENERATE STRIP AFTER FOUR PHOTOS
     React.useEffect(() => {
         if (images.length === 4) {
             handleGenerate(images);
         }
     }, [images]);
 
-    // CAPTURE AND RETAKE SYNCHRONIZATION
     useCaptureSync({
         roomId,
         role: context?.role ?? "guest",
@@ -343,8 +224,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
     return (
         !generatedStrip ? (
             <div className="relative w-full min-h-dvh flex flex-col items-center justify-center px-4 gap-8">
-
-                {/* MAIN CAMERA AREA */}
                 <div className="w-full lg:w-3/5 md:w-4/5 grid grid-cols-2 relative">
                     <div className="relative aspect-[3/3]">
                         <Webcam
@@ -378,7 +257,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                     {time !== null && <Timer time={time} />}
                 </div>
 
-                {/* PHOTO PREVIEWS */}
                 {images.length >= 1 && (
                     <div className="
                         relative
@@ -422,7 +300,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                     </div>
                 )}
 
-                {/* CONTROLS */}
                 {canCapture && (
                     <div className="grid md:grid-cols-2 grid-cols-1 gap-4">
                         <button

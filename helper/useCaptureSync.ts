@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -79,16 +78,6 @@ export function useCaptureSync({
                     | RetakeEvent
                     | undefined;
 
-                console.log("FIRESTORE SNAPSHOT RECEIVED", {
-                    localTime: Date.now(),
-                    serverTime: serverTimeRef.current(),
-                    fromCache: snapshot.metadata.fromCache,
-                    hasPendingWrites: snapshot.metadata.hasPendingWrites,
-                    event,
-                    retakeEvent
-                });
-
-                // INITIAL SNAPSHOT
                 if (initialSnapshot) {
                     if (event?.id) {
                         lastCaptureId.current = event.id;
@@ -100,16 +89,9 @@ export function useCaptureSync({
 
                     initialSnapshot = false;
 
-                    console.log("INITIAL SNAPSHOT", {
-                        eventId: event?.id,
-                        retakeEventId: retakeEvent?.id,
-                        skipped: true
-                    });
-
                     return;
                 }
 
-                // RETAKE EVENT
                 if (
                     retakeEvent?.id &&
                     retakeEvent.id !== lastRetakeId.current
@@ -117,35 +99,19 @@ export function useCaptureSync({
                     lastRetakeId.current = retakeEvent.id;
 
                     if (retakeEvent.initiatedBy !== role) {
-                        console.log("RETAKE EVENT RECEIVED", {
-                            retakeEvent,
-                            role
-                        });
-
                         void Promise.resolve(
                             onRetakeRef.current()
                         ).catch(console.error);
                     }
                 }
 
-                // CAPTURE EVENT
                 if (!event?.id || !event.captureAt) return;
 
                 if (event.id === lastCaptureId.current) return;
 
                 lastCaptureId.current = event.id;
 
-                // Cancel any previous capture schedule
                 cancelSchedule?.();
-
-                console.log("NEW CAPTURE EVENT RECEIVED", {
-                    localTime: Date.now(),
-                    serverTime: serverTimeRef.current(),
-                    captureAt: event.captureAt,
-                    remaining:
-                        event.captureAt -
-                        (serverTimeRef.current() ?? 0)
-                });
 
                 let cancelled = false;
                 let captureStarted = false;
@@ -165,7 +131,6 @@ export function useCaptureSync({
 
                     const serverNow = serverTimeRef.current();
 
-                    // Wait until the server clock is available
                     if (serverNow === null) {
                         timeout = setTimeout(scheduleCapture, 100);
                         return;
@@ -174,26 +139,11 @@ export function useCaptureSync({
                     const remaining = event.captureAt - serverNow;
 
                     if (firstSchedule) {
-                        console.log("CAPTURE SCHEDULING STARTED", {
-                            localTime: Date.now(),
-                            serverNow,
-                            captureAt: event.captureAt,
-                            remaining
-                        });
-
                         firstSchedule = false;
                     }
 
-                    // Capture when the scheduled server time is reached
                     if (remaining <= 0) {
                         captureStarted = true;
-
-                        console.log("CAPTURE TIMER FINISHED", {
-                            localTime: Date.now(),
-                            serverNow,
-                            captureAt: event.captureAt,
-                            drift: serverNow - event.captureAt
-                        });
 
                         onCountdownRef.current(null);
 
@@ -208,8 +158,6 @@ export function useCaptureSync({
                         Math.ceil(remaining / 1000)
                     );
 
-                    // Wake up at the next countdown boundary
-                    // instead of polling every 100ms
                     const nextCheck = Math.min(
                         remaining,
                         remaining % 1000 || 1000
