@@ -4,12 +4,9 @@ import React from "react"
 import { setDoc,doc } from "firebase/firestore"
 import { generateRoomId } from "@/helper/utils"
 import { db } from "@/lib/firebase"
-import { toast } from "react-toastify"
 import { useRTC } from "./context/RTCContext"
 import { useRouter } from "next/navigation"
-import { customToast } from "./components/toast"
-
-export const TOAST_ID = "photobooth-status";
+import { customToast, TOAST_IDS } from "./components/toast"
 
 export default function Index() {
     const context = useRTC();
@@ -28,7 +25,7 @@ export default function Index() {
             context?.setRole("host");
 
             customToast.info("Creating photobooth room", {
-                toastId: TOAST_ID,
+                toastId: TOAST_IDS.CREATE,
                 autoClose: 3000
             });
 
@@ -38,10 +35,9 @@ export default function Index() {
         } catch (error) {
             console.error(error);
             customToast.error("Photobooth error. Try again later.", {
-                toastId: TOAST_ID,
+                toastId: TOAST_IDS.CREATE,
                 autoClose: 3000
             });
-
         }
     }
 

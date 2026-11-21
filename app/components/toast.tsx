@@ -5,6 +5,16 @@ type ToastConfig = {
     autoClose?: ToastOptions["autoClose"];
 };
 
+export const TOAST_IDS = {
+    CREATE: "create-notification",
+    JOIN: "join-notification",
+    WAITING: "waiting-notification",
+    CONNECTION: "connection-notification",
+    CAPTURE: "capture-notification",
+    RETAKE: "retake-notification",
+    TRANSFER: "transfer-notification",
+}
+
 export const customToast = {
     success: (message: string, config?: ToastConfig) =>
         toastify.success(message, config),

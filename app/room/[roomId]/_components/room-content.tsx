@@ -14,9 +14,7 @@ import { useCaptureSync } from "@/helper/useCaptureSync";
 import clsx from "clsx";
 import { LiaUndoAltSolid } from "react-icons/lia";
 import { FaCamera } from "react-icons/fa";
-import { toast } from "react-toastify";
-import { TOAST_ID } from "@/app/page";
-import { customToast } from "@/app/components/toast";
+import { customToast, TOAST_IDS } from "@/app/components/toast";
 
 interface RoomContentProps {
     roomId: string;
@@ -80,7 +78,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
     };
 
     const capturePhoto = React.useCallback(async () => {
-        setLoading(true);
         const video = videoRef.current;
         const localPic = webcamRef.current?.getScreenshot();
         const remotePic = captureScreenshot(video);
@@ -93,8 +90,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                 remotePic
             }
         ]);
-
-        setLoading(false);
     }, [getServerTime]);
 
     const applyRetake = React.useCallback(() => {
@@ -116,7 +111,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
 
     const handleGenerate = async (photos: CapturedPair[]) => {
         customToast.success("Photobooth strip generated! Enjoy <3",{
-            toastId:TOAST_ID,
+            toastId:TOAST_IDS.TRANSFER,
             autoClose: 3000
         });
         
@@ -128,30 +123,34 @@ export default function RoomContent({ roomId }: RoomContentProps) {
     };
 
     React.useEffect(() => {
-        if (context?.role == "host") {
+        if (context?.role === "host") {
             customToast.success("A participant has joined", {
-                toastId:TOAST_ID,
-                autoClose:3000
+                toastId: TOAST_IDS.JOIN,
+                autoClose: 3000,
             });
         } else {
             customToast.success("You have joined the session", {
-                toastId:TOAST_ID,
-                autoClose:3000
+                toastId: TOAST_IDS.JOIN,
+                autoClose: 3000,
             });
         }
+
+        return () => {
+            customToast.dismiss(TOAST_IDS.JOIN);
+        };
     }, []);
 
     React.useEffect(() => {
         if (!canCapture){
             customToast.info("Waiting for participants", {
-                toastId:TOAST_ID,
+                toastId:TOAST_IDS.WAITING,
                 autoClose: false
             });
         } else {
-            customToast.dismiss(TOAST_ID);
+            customToast.dismiss(TOAST_IDS.WAITING);
         }
 
-    }, [canCapture])
+    }, [canCapture]);
 
     React.useEffect(() => {
         const video = videoRef.current;
@@ -198,7 +197,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
 
         return () => {
             unsubscribe();
-            customToast.dismiss(TOAST_ID);
         };
     }, [roomId]);
 
@@ -214,7 +212,8 @@ export default function RoomContent({ roomId }: RoomContentProps) {
         getServerTime,
         capture: capturePhoto,
         onCountdownChange: setTime,
-        onRetake: applyRetake
+        onRetake: applyRetake,
+        onLoading: setLoading
     });
 
     return (
