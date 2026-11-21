@@ -77,31 +77,59 @@ export default function RoomContent({ roomId }: RoomContentProps) {
 
         const serverNow = getServerTime();
 
-        if (serverNow === null) return;
+        if (serverNow === null) {
+            console.warn("CAPTURE ABORTED: Server clock unavailable");
+            return;
+        }
 
         const captureAt = serverNow + PHOTO_TIME;
+        const captureEventId = crypto.randomUUID();
 
         setLoading(true);
 
-        console.log("HOST: Writing capture event", {
-            localTime: Date.now(),
+        const writeStartedAt = Date.now();
+
+        console.log("CAPTURE WRITE STARTED", {
+            eventId: captureEventId,
+            role: context?.role,
+            localTime: writeStartedAt,
             serverTime: serverNow,
-            captureAt
+            captureAt,
+            photoTime: PHOTO_TIME,
+            isSynced,
+            canCapture
         });
 
         try {
             await updateDoc(roomRef, {
                 captureEvent: {
-                    id: crypto.randomUUID(),
+                    id: captureEventId,
                     captureAt
                 }
             });
+
+            const writeAcknowledgedAt = Date.now();
+
+            console.log("CAPTURE WRITE ACKNOWLEDGED", {
+                eventId: captureEventId,
+                localTime: writeAcknowledgedAt,
+                serverTime: getServerTime(),
+                duration: writeAcknowledgedAt - writeStartedAt
+            });
+
         } catch (error) {
-            console.error("FAILED TO WRITE CAPTURE EVENT", error);
+            console.error("CAPTURE WRITE FAILED", {
+                eventId: captureEventId,
+                localTime: Date.now(),
+                duration: Date.now() - writeStartedAt,
+                error
+            });
+
             setLoading(false);
             toast.error("Unable to start capture. Please try again.");
         }
     };
+
 
     // CAPTURE PHOTO
     const capturePhoto = React.useCallback(async () => {
@@ -169,22 +197,50 @@ export default function RoomContent({ roomId }: RoomContentProps) {
 
     // LOCAL RETAKE: PUBLISH EVENT + APPLY LOCALLY
     const handleRetake = async () => {
-        if (images.length < 1) return;
+        if (images.length < 1 || loading) return;
+
+        const retakeEventId = crypto.randomUUID();
+        const writeStartedAt = Date.now();
+
+        console.log("RETAKE WRITE STARTED", {
+            eventId: retakeEventId,
+            role: context?.role ?? "guest",
+            localTime: writeStartedAt,
+            serverTime: getServerTime(),
+            imagesCount: images.length
+        });
 
         try {
             await updateDoc(roomRef, {
                 retakeEvent: {
-                    id: crypto.randomUUID(),
+                    id: retakeEventId,
                     initiatedBy: context?.role ?? "guest"
                 }
             });
 
+            const writeAcknowledgedAt = Date.now();
+
+            console.log("RETAKE WRITE ACKNOWLEDGED", {
+                eventId: retakeEventId,
+                localTime: writeAcknowledgedAt,
+                serverTime: getServerTime(),
+                duration: writeAcknowledgedAt - writeStartedAt
+            });
+
             applyRetake();
+
         } catch (error) {
-            console.error("FAILED TO WRITE RETAKE EVENT", error);
+            console.error("RETAKE WRITE FAILED", {
+                eventId: retakeEventId,
+                localTime: Date.now(),
+                duration: Date.now() - writeStartedAt,
+                error
+            });
+
             toast.error("Unable to retake the last photo.");
         }
     };
+
 
     // REMOTE VIDEO STREAM
     React.useEffect(() => {

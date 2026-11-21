@@ -67,6 +67,7 @@ export function useCaptureSync({
 
         const unsubscribe = onSnapshot(
             roomRef,
+            {includeMetadataChanges:true},
             (snapshot) => {
                 const data = snapshot.data();
 
