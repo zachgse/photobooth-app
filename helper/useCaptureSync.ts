@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { customToast } from "@/app/components/toast";
+import { TOAST_ID } from "@/app/page";
 
 type Role = "host" | "guest";
 
@@ -103,6 +105,11 @@ export function useCaptureSync({
                             onRetakeRef.current()
                         ).catch(console.error);
                     }
+
+                    customToast.success("Retake previous photo",{
+                        toastId:TOAST_ID,
+                        autoClose:2000
+                    });
                 }
 
                 if (!event?.id || !event.captureAt) return;

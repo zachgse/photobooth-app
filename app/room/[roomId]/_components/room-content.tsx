@@ -71,8 +71,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
 
         if (serverNow === null) return;
 
-        setLoading(true);
-
         await updateDoc(roomRef, {
             captureEvent: {
                 id: crypto.randomUUID(),
@@ -82,6 +80,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
     };
 
     const capturePhoto = React.useCallback(async () => {
+        setLoading(true);
         const video = videoRef.current;
         const localPic = webcamRef.current?.getScreenshot();
         const remotePic = captureScreenshot(video);
@@ -99,10 +98,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
     }, [getServerTime]);
 
     const applyRetake = React.useCallback(() => {
-        customToast.success("Retake previous photo",{
-            toastId:TOAST_ID,
-            autoClose:2000
-        });
         setImages((prev) => prev.slice(0, -1));
     }, []);
 
@@ -133,17 +128,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
     };
 
     React.useEffect(() => {
-        const video = videoRef.current;
-
-        if (!video || !context?.remoteStream) {
-            customToast.info("Waiting for participants", {
-                toastId:TOAST_ID,
-                autoClose: false
-            });
-            return;
-        }
-
-        if (context.role == "host") {
+        if (context?.role == "host") {
             customToast.success("A participant has joined", {
                 toastId:TOAST_ID,
                 autoClose:3000
@@ -154,7 +139,24 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                 autoClose:3000
             });
         }
+    }, []);
 
+    React.useEffect(() => {
+        if (!canCapture){
+            customToast.info("Waiting for participants", {
+                toastId:TOAST_ID,
+                autoClose: false
+            });
+        } else {
+            customToast.dismiss(TOAST_ID);
+        }
+
+    }, [canCapture])
+
+    React.useEffect(() => {
+        const video = videoRef.current;
+
+        if (!video || !context?.remoteStream) return;
 
         video.srcObject = context.remoteStream;
 
