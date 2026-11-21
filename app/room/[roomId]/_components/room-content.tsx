@@ -15,6 +15,8 @@ import clsx from "clsx";
 import { LiaUndoAltSolid } from "react-icons/lia";
 import { FaCamera } from "react-icons/fa";
 import { toast } from "react-toastify";
+import { TOAST_ID } from "@/app/page";
+import { customToast } from "@/app/components/toast";
 
 interface RoomContentProps {
     roomId: string;
@@ -30,7 +32,6 @@ interface ClockSync {
     guest: boolean;
 }
 
-const TOAST_ID = "photobooth-preparation";
 const PHOTO_TIME = 4000;
 
 export default function RoomContent({ roomId }: RoomContentProps) {
@@ -97,15 +98,11 @@ export default function RoomContent({ roomId }: RoomContentProps) {
         ]);
     }, [getServerTime]);
 
-    const handleGenerate = async (photos: CapturedPair[]) => {
-        const strip = await generatePhotoboothStrip({
-            photos
-        });
-
-        setGeneratedStrip(strip);
-    };
-
     const applyRetake = React.useCallback(() => {
+        customToast.info("Retake previous photo",{
+            toastId:TOAST_ID,
+            autoClose:2000
+        });
         setImages((prev) => prev.slice(0, -1));
     }, []);
 
@@ -122,11 +119,18 @@ export default function RoomContent({ roomId }: RoomContentProps) {
         applyRetake();
     };
 
-    React.useEffect(() => {
-        if (context && !context.role) {
-            context.role = "guest";
-        }
-    }, []);
+    const handleGenerate = async (photos: CapturedPair[]) => {
+        customToast.info("Generating photobooth strip",{
+            toastId:TOAST_ID,
+            autoClose:generatedStrip ? 2000 : false
+        });
+        
+        const strip = await generatePhotoboothStrip({
+            photos
+        });
+
+        setGeneratedStrip(strip);
+    };
 
     React.useEffect(() => {
         const video = videoRef.current;
@@ -142,7 +146,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
 
     React.useEffect(() => {
         const updateReadiness = async () => {
-            const role = context?.role;
+            const role = context?.role ?? "guest";
 
             if (!role) return;
 
@@ -157,16 +161,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
     }, [roomId, context?.role, isSynced]);
 
     React.useEffect(() => {
-        toast.info("Preparing the photobooth...", {
-            toastId: TOAST_ID,
-            position: "top-center",
-            autoClose: false,
-            closeOnClick: false,
-            pauseOnHover: true,
-            draggable: true,
-            theme: "light"
-        });
-
         const unsubscribe = onSnapshot(
             roomRef,
             (snapshot) => {
@@ -180,20 +174,12 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                     sync?.host === true &&
                     sync?.guest === true;
 
-                if (ready) {
-                    toast.update(TOAST_ID, {
-                        render: "Photobooth is ready!",
-                        type: "success",
-                        autoClose: 2000,
-                        closeOnClick: true
+                if (!ready) {
+                    customToast.info("Waiting for participants", {
+                        toastId:TOAST_ID,
+                        autoClose:false
                     });
-                } else {
-                    toast.update(TOAST_ID, {
-                        render: "Synchronizing clocks...",
-                        type: "info",
-                        autoClose: false
-                    });
-                }
+                } 
             },
             (error) => {
                 console.error("CLOCK READINESS SNAPSHOT ERROR", error);
@@ -202,7 +188,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
 
         return () => {
             unsubscribe();
-            toast.dismiss(TOAST_ID);
+            customToast.dismiss(TOAST_ID);
         };
     }, [roomId]);
 

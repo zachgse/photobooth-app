@@ -19,7 +19,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-dvh flex flex-col">
         <RTCContextProvider>
-          <ToastContainer />
+          <ToastContainer position="top-center" 
+                          hideProgressBar={false}
+                          closeOnClick={false}
+                          pauseOnHover={true}
+                          draggable={true}
+                          theme="light"/>
           {children}
         </RTCContextProvider>
       </body>
