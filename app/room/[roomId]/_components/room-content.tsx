@@ -79,8 +79,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                 captureAt: serverNow + PHOTO_TIME
             }
         });
-
-        setLoading(false);
     };
 
     const capturePhoto = React.useCallback(async () => {
@@ -96,10 +94,12 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                 remotePic
             }
         ]);
+
+        setLoading(false);
     }, [getServerTime]);
 
     const applyRetake = React.useCallback(() => {
-        customToast.info("Retake previous photo",{
+        customToast.success("Retake previous photo",{
             toastId:TOAST_ID,
             autoClose:2000
         });
@@ -135,7 +135,26 @@ export default function RoomContent({ roomId }: RoomContentProps) {
     React.useEffect(() => {
         const video = videoRef.current;
 
-        if (!video || !context?.remoteStream) return;
+        if (!video || !context?.remoteStream) {
+            customToast.info("Waiting for participants", {
+                toastId:TOAST_ID,
+                autoClose: false
+            });
+            return;
+        }
+
+        if (context.role == "host") {
+            customToast.success("A participant has joined", {
+                toastId:TOAST_ID,
+                autoClose:3000
+            });
+        } else {
+            customToast.success("You have joined the session", {
+                toastId:TOAST_ID,
+                autoClose:3000
+            });
+        }
+
 
         video.srcObject = context.remoteStream;
 
@@ -169,17 +188,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                 const sync = snapshot.data().clockSync ?? null;
 
                 setClockSync(sync);
-
-                const ready =
-                    sync?.host === true &&
-                    sync?.guest === true;
-
-                if (!ready) {
-                    customToast.info("Waiting for participants", {
-                        toastId:TOAST_ID,
-                        autoClose:ready 
-                    });
-                } 
             },
             (error) => {
                 console.error("CLOCK READINESS SNAPSHOT ERROR", error);
