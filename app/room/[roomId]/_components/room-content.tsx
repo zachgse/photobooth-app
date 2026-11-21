@@ -6,13 +6,14 @@ import { useRTC } from "@/app/context/RTCContext";
 import { Timer } from "./timer";
 import { generatePhotoboothStrip } from "./generate-photo";
 import { captureScreenshot } from "@/helper/utils";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { useServerClock } from "@/helper/useServerClock";
 import { db } from "@/lib/firebase";
 import { useCaptureSync } from "@/helper/useCaptureSync";
 import clsx from "clsx";
 import { LiaUndoAltSolid } from "react-icons/lia";
 import { FaCamera } from "react-icons/fa";
+import { toast } from "react-toastify";
 
 interface RoomContentProps { 
     roomId: string;
@@ -22,6 +23,14 @@ export interface CapturedPair {
     localPic: string;
     remotePic: string;
 }
+
+interface ClockSync {
+    host: boolean;
+    guest: boolean 
+}
+
+const TOAST_ID = "photobooth-preparation";
+const PHOTO_TIME = 4000;
 
 export default function RoomContent ({roomId}:RoomContentProps) {
     const roomRef = doc(db,"rooms",roomId);
@@ -33,7 +42,11 @@ export default function RoomContent ({roomId}:RoomContentProps) {
     const [images,setImages] = React.useState<CapturedPair[]>([]);
     const [generatedStrip,setGeneratedStrip] = React.useState<string|null>(null);
     const { isSynced,getServerTime } = useServerClock();
-    const PHOTO_TIME = 4000;
+    const [clockSync,setClockSync] = React.useState<ClockSync|null>(null); 
+    
+    const canCapture = isSynced &&
+                        clockSync?.host === true &&
+                        clockSync?.guest === true;
 
     const handleUserMedia = async(stream: MediaStream) => {
         context?.createConnection(stream);
@@ -108,6 +121,12 @@ export default function RoomContent ({roomId}:RoomContentProps) {
     }
 
     React.useEffect(() => {
+        if (context && !context.role) {
+            context.role = "guest";
+        }
+    }, []);
+
+    React.useEffect(() => {
         const video = videoRef.current;
 
         if (!video || !context?.remoteStream) return;
@@ -115,6 +134,63 @@ export default function RoomContent ({roomId}:RoomContentProps) {
         video.srcObject = context.remoteStream;
 
     }, [context?.remoteStream]);
+
+    React.useEffect(() => {
+        const updateReadiness = async () => {
+            await updateDoc(doc(db, "rooms", roomId), {
+                [`clockSync.${context?.role}`]: isSynced,
+            });
+        };
+
+        updateReadiness().catch(console.error);
+    }, [roomId, context?.role, isSynced]);
+
+    React.useEffect(() => {
+        toast.info("Preparing the photobooth...", {
+            toastId:TOAST_ID,
+            position: "top-center",
+            autoClose: false,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            theme: "light",
+        });
+
+        const unsubscribe = onSnapshot(
+            doc(db, "rooms", roomId),
+            (snapshot) => {
+                if (!snapshot.exists()) return;
+
+                const sync = snapshot.data().clockSync ?? null;
+
+                setClockSync(sync);
+
+                const ready =
+                    sync?.host === true &&
+                    sync?.guest === true;
+
+                if (ready) {
+                    toast.update(TOAST_ID, {
+                        render: "Photobooth is ready!",
+                        type: "success",
+                        autoClose: 2000,
+                        closeOnClick: true,
+                    });
+                } else {
+                    toast.update(TOAST_ID, {
+                        render: "Synchronizing clocks...",
+                        type: "info",
+                        autoClose: false,
+                    });
+                }
+            }
+        );
+
+        return () => {
+            unsubscribe();
+            toast.dismiss(TOAST_ID);
+        };
+    }, [roomId]);
 
     React.useEffect(() => {
         if (images && images.length == 4) handleGenerate(images);
@@ -198,25 +274,28 @@ export default function RoomContent ({roomId}:RoomContentProps) {
                     </div>
                 )}
 
-                <div className="grid md:grid-cols-2 grid-cols-1 gap-4">
-                    <button onClick={handleRetake}
-                            disabled={images.length < 1}
-                            className={clsx("border border-black px-12 py-4 rounded-lg flex items-center justify-center gap-2",
-                                    images.length < 1 ? ("opacity-70 cursor-not-allowed")
-                                                    : ("cursor-pointer")
-                            )}>
-                                <LiaUndoAltSolid />
-                                Retake last preview
-                    </button>
-                    <button onClick={handleCapture}
-                            disabled={loading}
-                            className={clsx("bg-black px-12 py-4 text-white rounded-lg flex items-center justify-center gap-2",
-                                        loading ? ("opacity-70 cursor-not-allowed") : (" cursor-pointer")
-                            )}>
-                                <FaCamera />
-                                {loading ? "Capturing" : "Capture"}
-                    </button>
-                </div>
+                {canCapture && (
+                    <div className="grid md:grid-cols-2 grid-cols-1 gap-4">
+                        <button onClick={handleRetake}
+                                disabled={images.length < 1}
+                                className={clsx("border border-black px-12 py-4 rounded-lg flex items-center justify-center gap-2",
+                                        images.length < 1 ? ("opacity-70 cursor-not-allowed")
+                                                        : ("cursor-pointer")
+                                )}>
+                                    <LiaUndoAltSolid />
+                                    Retake last preview
+                        </button>
+                        <button onClick={handleCapture}
+                                disabled={loading}
+                                className={clsx("bg-black px-12 py-4 text-white rounded-lg flex items-center justify-center gap-2",
+                                            loading ? ("opacity-70 cursor-not-allowed") : (" cursor-pointer")
+                                )}>
+                                    <FaCamera />
+                                    {loading ? "Capturing" : "Capture"}
+                        </button>
+                    </div>
+                )}
+
             </div>
         ) : (
             <div className="w-full min-h-dvh flex items-center justify-center">

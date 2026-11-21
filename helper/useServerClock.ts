@@ -1,46 +1,104 @@
-
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { ref, onValue } from "firebase/database";
+import { useEffect, useRef, useState } from "react";
+import { onValue, ref } from "firebase/database";
 import { rtdb } from "@/lib/firebase";
+
+const SYNC_SETTLE_TIME = 1500;
 
 export function useServerClock() {
     const [offset, setOffset] = useState<number | null>(null);
+    const [isConnected, setIsConnected] = useState(false);
+    const [isSynced, setIsSynced] = useState(false);
+
+    const connectedRef = useRef(false);
+    const offsetRef = useRef<number | null>(null);
 
     useEffect(() => {
-        const offsetRef = ref(rtdb, ".info/serverTimeOffset");
+        let syncTimer: ReturnType<typeof setTimeout> | null = null;
 
-        const unsubscribe = onValue(offsetRef, (snapshot) => {
-            const serverOffset = snapshot.val();
-
-            console.log("SERVER CLOCK OFFSET UPDATED", {
-                localTime: Date.now(),
-                offset: serverOffset,
-                estimatedServerTime:
-                    typeof serverOffset === "number"
-                        ? Date.now() + serverOffset
-                        : null,
-                isSynced: typeof serverOffset === "number"
-            });
-
-            if (typeof serverOffset === "number") {
-                setOffset(serverOffset);
+        const scheduleSync = () => {
+            if (!connectedRef.current || offsetRef.current === null) {
+                return;
             }
-        });
 
-        return () => unsubscribe();
+            setIsSynced(false);
+
+            if (syncTimer) clearTimeout(syncTimer);
+
+            syncTimer = setTimeout(() => {
+                if (connectedRef.current && offsetRef.current !== null) {
+                    setIsSynced(true);
+                }
+            }, SYNC_SETTLE_TIME);
+        };
+
+        const unsubscribeConnection = onValue(
+            ref(rtdb, ".info/connected"),
+            (snapshot) => {
+                const connected = snapshot.val() === true;
+
+                connectedRef.current = connected;
+                setIsConnected(connected);
+
+                if (!connected) {
+                    setIsSynced(false);
+
+                    if (syncTimer) {
+                        clearTimeout(syncTimer);
+                        syncTimer = null;
+                    }
+                } else {
+                    scheduleSync();
+                }
+            }
+        );
+
+        const unsubscribeOffset = onValue(
+            ref(rtdb, ".info/serverTimeOffset"),
+            (snapshot) => {
+                const value = snapshot.val();
+
+                const valid =
+                    typeof value === "number" &&
+                    Number.isFinite(value);
+
+                offsetRef.current = valid ? value : null;
+                setOffset(offsetRef.current);
+
+                if (valid) {
+                    scheduleSync();
+                } else {
+                    setIsSynced(false);
+
+                    if (syncTimer) {
+                        clearTimeout(syncTimer);
+                        syncTimer = null;
+                    }
+                }
+            }
+        );
+
+        return () => {
+            unsubscribeConnection();
+            unsubscribeOffset();
+
+            if (syncTimer) clearTimeout(syncTimer);
+        };
     }, []);
 
-    const getServerTime = useCallback(() => {
-        if (offset === null) return null;
+    const getServerTime = () => {
+        if (!isConnected || !isSynced || offset === null) {
+            return null;
+        }
 
         return Date.now() + offset;
-    }, [offset]);
+    };
 
     return {
         offset,
-        isSynced: offset !== null,
+        isConnected,
+        isSynced,
         getServerTime,
     };
 }
