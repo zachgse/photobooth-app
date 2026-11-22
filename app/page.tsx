@@ -1,16 +1,17 @@
 "use client"
 
 import React from "react"
-import { setDoc,doc } from "firebase/firestore"
+import { setDoc,doc, getDoc } from "firebase/firestore"
 import { generateRoomId } from "@/helper/utils"
 import { db } from "@/lib/firebase"
 import { useRTC } from "../context/RTCContext"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { customToast, TOAST_IDS } from "../components/toast"
 
 export default function Index() {
     const context = useRTC();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [codeInput,setCodeInput] = React.useState<string>("");
 
     const startPhotobooth = async() => {
@@ -40,7 +41,18 @@ export default function Index() {
         }
     }
 
-    const joinPhotobooth = () => { 
+    const joinPhotobooth = async() => { 
+        const roomRef = doc(db,"rooms",codeInput);
+        const roomSnap = await getDoc(roomRef);
+        if (!roomSnap.exists()) {
+            customToast.error("Room does not exist", {
+                toastId: TOAST_IDS.CREATE,
+                autoClose: 3000
+            });    
+            setCodeInput("");
+            return;
+        } 
+
         customToast.info("Joining photobooth room", {
             toastId: TOAST_IDS.CREATE,
             autoClose: false
@@ -49,6 +61,18 @@ export default function Index() {
         router.push(`/room/${codeInput}`);
         customToast.dismiss(TOAST_IDS.CREATE);
     }
+
+    React.useEffect(() => {
+        const error = searchParams.get("error");
+
+        if (error === "room-not-found") {
+            customToast.error("Room does not exist!",{
+                toastId: TOAST_IDS.CREATE,
+                autoClose: 3000
+            });
+            router.replace("/");
+        }
+    }, [searchParams,router]);
 
     return (
             <div className="w-full min-h-dvh flex flex-col gap-4 items-center justify-center ">
