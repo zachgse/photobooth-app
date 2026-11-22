@@ -30,7 +30,6 @@ export default function GeneratedPhoto({photo}:GeneratedPhotoProps) {
                 alt="Printer preview"
                 className="md:w-40 w-full h-auto grow-0"
             />
-
             <motion.div
                 className="flex-1 min-h-0 w-full flex justify-center"
                 variants={slideDown}
@@ -45,7 +44,6 @@ export default function GeneratedPhoto({photo}:GeneratedPhotoProps) {
                     height={1800}
                     className="w-auto h-full max-w-full object-contain"
                 />
-                {/* <div className="w-[600px] h-[1800px] bg-green-300"></div> */}
             </motion.div>
 
             <a href={photo} target="_blank" download
