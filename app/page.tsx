@@ -11,7 +11,6 @@ import { customToast, TOAST_IDS } from "../components/toast"
 export default function Index() {
     const context = useRTC();
     const router = useRouter();
-    const searchParams = useSearchParams();
     const [codeInput,setCodeInput] = React.useState<string>("");
 
     const startPhotobooth = async() => {
@@ -63,7 +62,8 @@ export default function Index() {
     }
 
     React.useEffect(() => {
-        const error = searchParams.get("error");
+        const params = new URLSearchParams(window.location.search);
+        const error = params.get("error");
 
         if (error === "room-not-found") {
             customToast.error("Room does not exist!",{
@@ -72,7 +72,7 @@ export default function Index() {
             });
             router.replace("/");
         }
-    }, [searchParams,router]);
+    }, [router]);
 
     return (
             <div className="w-full min-h-dvh flex flex-col gap-4 items-center justify-center ">
