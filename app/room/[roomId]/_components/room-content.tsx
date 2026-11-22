@@ -227,6 +227,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                     <div className="relative aspect-[3/3]">
                         <Webcam mirrored
                                 audio={true}
+                                muted={true}
                                 videoConstraints={{ facingMode: "user" }}
                                 screenshotFormat="image/jpeg"
                                 ref={webcamRef}
