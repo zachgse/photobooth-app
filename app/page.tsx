@@ -4,9 +4,9 @@ import React from "react"
 import { setDoc,doc } from "firebase/firestore"
 import { generateRoomId } from "@/helper/utils"
 import { db } from "@/lib/firebase"
-import { useRTC } from "./context/RTCContext"
+import { useRTC } from "../context/RTCContext"
 import { useRouter } from "next/navigation"
-import { customToast, TOAST_IDS } from "./components/toast"
+import { customToast, TOAST_IDS } from "../components/toast"
 
 export default function Index() {
     const context = useRTC();

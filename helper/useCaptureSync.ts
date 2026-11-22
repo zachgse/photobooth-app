@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { customToast, TOAST_IDS } from "@/app/components/toast";
+import { customToast, TOAST_IDS } from "@/components/toast";
 
 type Role = "host" | "guest";
 

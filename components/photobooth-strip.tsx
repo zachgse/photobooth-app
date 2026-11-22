@@ -1,4 +1,4 @@
-import { CapturedPair } from "./room-content";
+import { CapturedPair } from "../app/room/[roomId]/_components/room-content";
 
 interface PhotoboothOptions {
     photos: CapturedPair[];

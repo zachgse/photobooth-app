@@ -2,9 +2,9 @@
 
 import React from "react";
 import Webcam from "react-webcam";
-import { useRTC } from "@/app/context/RTCContext";
-import { Timer } from "./timer";
-import { generatePhotoboothStrip } from "./generate-photo";
+import { useRTC } from "@/context/RTCContext";
+import { Timer } from "../../../../components/timer";
+import { generatePhotoboothStrip } from "../../../../components/photobooth-strip";
 import { captureScreenshot } from "@/helper/utils";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { useServerClock } from "@/helper/useServerClock";
@@ -13,7 +13,8 @@ import { useCaptureSync } from "@/helper/useCaptureSync";
 import clsx from "clsx";
 import { LiaUndoAltSolid } from "react-icons/lia";
 import { FaCamera } from "react-icons/fa";
-import { customToast, TOAST_IDS } from "@/app/components/toast";
+import { customToast, TOAST_IDS } from "@/components/toast";
+import GeneratedPhoto from "./generated-photo";
 
 interface RoomContentProps {
     roomId: string;
@@ -329,13 +330,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                 )}
             </div>
         ) : (
-            <div className="w-full min-h-dvh flex items-center justify-center">
-                <img
-                    src={generatedStrip}
-                    alt="Generated photobooth strip"
-                    className="w-full max-w-xs"
-                />
-            </div>
+            <GeneratedPhoto photo={generatedStrip}/>
         )
     );
 }
