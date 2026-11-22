@@ -5,7 +5,7 @@ import { setDoc,doc, getDoc } from "firebase/firestore"
 import { generateRoomId } from "@/helper/utils"
 import { db } from "@/lib/firebase"
 import { useRTC } from "../context/RTCContext"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { customToast, TOAST_IDS } from "../components/toast"
 
 export default function Index() {
@@ -41,8 +41,10 @@ export default function Index() {
     }
 
     const joinPhotobooth = async() => { 
-        const roomRef = doc(db,"rooms",codeInput);
+        const roomId = codeInput.toUpperCase();
+        const roomRef = doc(db,"rooms",roomId);
         const roomSnap = await getDoc(roomRef);
+
         if (!roomSnap.exists()) {
             customToast.error("Room does not exist", {
                 toastId: TOAST_IDS.CREATE,

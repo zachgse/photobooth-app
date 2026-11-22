@@ -294,7 +294,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                             onClick={handleRetake}
                             disabled={images.length < 1 || loading}
                             className={clsx(
-                                "md:order-1 order-2 border border-black px-12 py-4 rounded-lg flex items-center justify-center gap-2",
+                                "md:order-1 order-2 bg-white border border-black px-12 py-4 rounded-lg flex items-center justify-center gap-2",
                                 images.length < 1 || loading
                                     ? "opacity-70 cursor-not-allowed"
                                     : "cursor-pointer"

@@ -9,7 +9,8 @@ interface PageProps {
 
 export default async function RoomId({params}:PageProps) {
     const { roomId } = await params;
-    const roomRef = doc(db,"rooms",roomId);
+    const updatedRoomId = roomId.toUpperCase();
+    const roomRef = doc(db,"rooms",updatedRoomId);
     const roomSnap = await getDoc(roomRef);
 
     if (!roomSnap.exists()){
@@ -18,7 +19,7 @@ export default async function RoomId({params}:PageProps) {
 
     return (
     <div className="flex flex items-center justify-center gap-24">
-        <RoomContent roomId={roomId}/>
+        <RoomContent roomId={updatedRoomId}/>
     </div>
     )
 }
