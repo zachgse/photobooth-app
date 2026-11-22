@@ -216,22 +216,13 @@ export default function RoomContent({ roomId }: RoomContentProps) {
             <div className="relative w-full min-h-dvh flex flex-col items-center justify-center px-4 gap-8">
                 <div className="w-full lg:w-3/5 md:w-4/5 grid grid-cols-2 relative">
                     <div className="relative aspect-[3/3]">
-                        {webcamRef.current ? (
-                            <Webcam
-                                mirrored
+                        <Webcam mirrored
                                 audio={false}
                                 videoConstraints={{ facingMode: "user" }}
                                 screenshotFormat="image/jpeg"
                                 ref={webcamRef}
                                 onUserMedia={handleUserMedia}
-                                className="w-full h-full object-cover rounded-r-xl"
-                            />
-                        ) : (
-                            <div className="bg-black text-white w-full h-full flex items-center justify-center rounded-l-xl">
-                                <p className="text-xs">No camera</p>
-                            </div>
-                        ) }
-
+                                className="w-full h-full object-cover rounded-r-xl"/>
                     </div>
 
                     <div className="relative aspect-[3/3]">

@@ -17,7 +17,7 @@ export default function Index() {
         try {
             customToast.info("Creating photobooth room", {
                 toastId: TOAST_IDS.CREATE,
-                autoClose: 3000
+                autoClose: false
             });
             const roomId = generateRoomId();
             const roomRef = doc(db, "rooms", roomId);
@@ -28,9 +28,9 @@ export default function Index() {
 
             context?.setRole("host");
 
-            setTimeout(() => {
-                router.push(`/room/${roomId}`);
-            },3000)
+            router.push(`/room/${roomId}`);
+
+            customToast.dismiss(TOAST_IDS.CREATE);
         } catch (error) {
             console.error(error);
             customToast.error("Photobooth error. Try again later.", {
@@ -43,14 +43,15 @@ export default function Index() {
     const joinPhotobooth = () => { 
         customToast.info("Joining photobooth room", {
             toastId: TOAST_IDS.CREATE,
-            autoClose: 3000
+            autoClose: false
         });
         context?.setRole("guest");
         router.push(`/room/${codeInput}`);
+        customToast.dismiss(TOAST_IDS.CREATE);
     }
 
     return (
-            <div className="h-screen flex flex-col gap-4 items-center justify-center ">
+            <div className="w-full min-h-dvh flex flex-col gap-4 items-center justify-center ">
                 <div className="flex md:flex-row flex-col gap-12 md:w-3/5 w-4/5 mx-auto">
                     <div onClick={startPhotobooth} className="border-1 rounded-2xl w-full h-auto p-8 cursor-pointer hover:border-blue-500 hover:text-blue-500">
                         <p className="text-3xl font-bold">Start photobooth</p> <br />
