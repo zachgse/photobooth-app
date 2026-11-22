@@ -147,7 +147,6 @@ export async function generatePhotoboothStrip({
     ctx.fillStyle = textColor;
     ctx.font = "bold 36px Georgia";
     ctx.textAlign = "center";
-    ctx.fillText("OUR PHOTOBOOTH", width / 2, 75);
 
     // Header decoration
     drawHeart(width / 2 - 155, 62, 20, "#A8D8E8");
@@ -284,10 +283,6 @@ export async function generatePhotoboothStrip({
     ctx.font = "italic 19px Georgia";
     ctx.fillStyle = "#86B7C8";
     ctx.fillText("Forever in our memories", width / 2, 1700);
-
-    // Bottom decorative hearts
-    drawHeart(220, 1660, 17, heartColor);
-    drawHeart(380, 1660, 17, heartColor);
 
     return canvas.toDataURL("image/png");
 }

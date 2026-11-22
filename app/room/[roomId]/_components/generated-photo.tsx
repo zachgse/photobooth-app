@@ -28,7 +28,7 @@ export default function GeneratedPhoto({photo}:GeneratedPhotoProps) {
             <Image
                 src={printer}
                 alt="Printer preview"
-                className="md:w-40 w-full h-auto grow-0"
+                className="md:w-60 w-full h-auto grow-0"
             />
             <motion.div
                 className="flex-1 min-h-0 w-full flex justify-center"
