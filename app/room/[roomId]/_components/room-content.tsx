@@ -12,7 +12,7 @@ import { db } from "@/lib/firebase";
 import { useCaptureSync } from "@/helper/useCaptureSync";
 import clsx from "clsx";
 import { LiaUndoAltSolid } from "react-icons/lia";
-import { FaCamera } from "react-icons/fa";
+import { FaCamera, FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
 import { customToast, TOAST_IDS } from "@/components/toast";
 import GeneratedPhoto from "./generated-photo";
 
@@ -39,6 +39,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
     const webcamRef = React.useRef<Webcam | null>(null);
     const videoRef = React.useRef<HTMLVideoElement>(null);
 
+    const [isMuted,setIsMuted] = React.useState<boolean>(false);
     const [time, setTime] = React.useState<number | null>(null);
     const [loading, setLoading] = React.useState(false);
     const [images, setImages] = React.useState<CapturedPair[]>([]);
@@ -51,6 +52,14 @@ export default function RoomContent({ roomId }: RoomContentProps) {
         isSynced &&
         clockSync?.host === true &&
         clockSync?.guest === true;
+
+    const toggleMute = () => {
+        const audioTrack = webcamRef.current?.stream?.getAudioTracks()[0];
+        if (audioTrack) {
+            audioTrack.enabled = !audioTrack.enabled;
+            setIsMuted(!audioTrack.enabled);
+        }
+    };
 
     const handleUserMedia = async (stream: MediaStream) => {
         context?.createConnection(stream);
@@ -288,7 +297,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                 )}
 
                 {canCapture && (
-                    <div className="grid md:grid-cols-2 grid-cols-1 gap-4">
+                    <div className="grid md:grid-cols-3 grid-cols-1 gap-4">
                         <button
                             onClick={handleRetake}
                             disabled={images.length < 1 || loading}
@@ -315,6 +324,16 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                         >
                             <FaCamera />
                             {loading ? "Capturing" : "Capture"}
+                        </button>
+
+                        <button
+                            onClick={toggleMute}
+                            className={clsx(
+                                "order-3 bg-white border border-black px-12 py-4 rounded-lg flex items-center justify-center gap-2",
+                            )}
+                        >
+                            {isMuted ? <FaMicrophoneSlash /> : <FaMicrophone />}
+                            {isMuted ? "Unmute" : "Mute"}
                         </button>
                     </div>
                 )}
