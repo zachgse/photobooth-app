@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+body {
+    background-image: url("/assets/bg.jpg");
+    background-repeat: repeat;
+    background-size: 20% auto;
+    background-position: center;
+    background-color: #F4F4F0;
+}
+
+@media (max-width: 992px){
+    body{
+        background-size: 80% auto;
+    }
+}

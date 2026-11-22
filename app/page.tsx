@@ -53,11 +53,11 @@ export default function Index() {
     return (
             <div className="w-full min-h-dvh flex flex-col gap-4 items-center justify-center ">
                 <div className="flex md:flex-row flex-col gap-12 md:w-3/5 w-4/5 mx-auto">
-                    <div onClick={startPhotobooth} className="border-1 rounded-2xl w-full h-auto p-8 cursor-pointer hover:border-blue-500 hover:text-blue-500">
+                    <div onClick={startPhotobooth} className="bg-white border-1 rounded-2xl w-full h-auto p-8 cursor-pointer hover:border-blue-500 hover:text-blue-500">
                         <p className="text-3xl font-bold">Start photobooth</p> <br />
                         Invite a friend with shared link and snap side-by-side
                     </div>
-                    <div className="border-1 rounded-2xl w-full p-8 flex flex-col">
+                    <div className="bg-white border-1 rounded-2xl w-full p-8 flex flex-col">
                         <p className="text-3xl font-bold">Got a code?</p> <br />
                         <div className="flex md:flex-row flex-col items-center gap-4">
                             <input type="text" className="border-1 border-gray-300 bg-gray-100 px-2 py-4 rounded-2xl uppercase" placeholder="Enter code"
