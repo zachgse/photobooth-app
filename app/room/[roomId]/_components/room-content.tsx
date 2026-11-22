@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -123,12 +122,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
     };
 
     React.useEffect(() => {
-        if (context?.role === "host") {
-            customToast.success("A participant has joined", {
-                toastId: TOAST_IDS.JOIN,
-                autoClose: 3000,
-            });
-        } else {
+        if (context?.role != "host") {
             customToast.success("You have joined the session", {
                 toastId: TOAST_IDS.JOIN,
                 autoClose: 3000,
@@ -142,7 +136,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
 
     React.useEffect(() => {
         if (!canCapture){
-            customToast.info("Waiting for participants", {
+            customToast.info("Preparing the photobooth", {
                 toastId:TOAST_IDS.WAITING,
                 autoClose: false
             });

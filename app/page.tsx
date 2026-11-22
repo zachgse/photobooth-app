@@ -15,6 +15,10 @@ export default function Index() {
 
     const startPhotobooth = async() => {
         try {
+            customToast.info("Creating photobooth room", {
+                toastId: TOAST_IDS.CREATE,
+                autoClose: 3000
+            });
             const roomId = generateRoomId();
             const roomRef = doc(db, "rooms", roomId);
 
@@ -23,11 +27,6 @@ export default function Index() {
             });
 
             context?.setRole("host");
-
-            customToast.info("Creating photobooth room", {
-                toastId: TOAST_IDS.CREATE,
-                autoClose: 3000
-            });
 
             setTimeout(() => {
                 router.push(`/room/${roomId}`);
@@ -42,6 +41,10 @@ export default function Index() {
     }
 
     const joinPhotobooth = () => { 
+        customToast.info("Joining photobooth room", {
+            toastId: TOAST_IDS.CREATE,
+            autoClose: 3000
+        });
         context?.setRole("guest");
         router.push(`/room/${codeInput}`);
     }
@@ -56,8 +59,9 @@ export default function Index() {
                     <div className="border-1 rounded-2xl w-full p-8 flex flex-col">
                         <p className="text-3xl font-bold">Got a code?</p> <br />
                         <div className="flex md:flex-row flex-col items-center gap-4">
-                            <input type="text" className="border-1 border-gray-300 bg-gray-100 px-2 py-4 rounded-2xl" placeholder="Enter code"
+                            <input type="text" className="border-1 border-gray-300 bg-gray-100 px-2 py-4 rounded-2xl uppercase" placeholder="Enter code"
                                 value={codeInput}
+                                maxLength={6}
                                 onChange={(e)=>setCodeInput(e.target.value)}
                                 />
                             <button onClick={joinPhotobooth}
