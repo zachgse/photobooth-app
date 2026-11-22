@@ -109,7 +109,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
     };
 
     const handleGenerate = async (photos: CapturedPair[]) => {
-        customToast.success("Photobooth strip generated! Enjoy <3",{
+        customToast.success("Generating photobooth strip",{
             toastId:TOAST_IDS.TRANSFER,
             autoClose: 3000
         });
@@ -215,15 +215,22 @@ export default function RoomContent({ roomId }: RoomContentProps) {
             <div className="relative w-full min-h-dvh flex flex-col items-center justify-center px-4 gap-8">
                 <div className="w-full lg:w-3/5 md:w-4/5 grid grid-cols-2 relative">
                     <div className="relative aspect-[3/3]">
-                        <Webcam
-                            mirrored
-                            audio={false}
-                            videoConstraints={{ facingMode: "user" }}
-                            screenshotFormat="image/jpeg"
-                            ref={webcamRef}
-                            onUserMedia={handleUserMedia}
-                            className="w-full h-full object-cover rounded-r-xl"
-                        />
+                        {webcamRef.current ? (
+                            <Webcam
+                                mirrored
+                                audio={false}
+                                videoConstraints={{ facingMode: "user" }}
+                                screenshotFormat="image/jpeg"
+                                ref={webcamRef}
+                                onUserMedia={handleUserMedia}
+                                className="w-full h-full object-cover rounded-r-xl"
+                            />
+                        ) : (
+                            <div className="bg-black text-white w-full h-full flex items-center justify-center rounded-l-xl">
+                                <p className="text-xs">No camera</p>
+                            </div>
+                        ) }
+
                     </div>
 
                     <div className="relative aspect-[3/3]">
@@ -236,8 +243,8 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                                 className="w-full h-full object-cover -scale-x-100 rounded-l-xl"
                             />
                         ) : (
-                            <div className="bg-gray-300 w-full h-full flex items-center justify-center rounded-r-xl">
-                                <p>No video yet.</p>
+                            <div className="bg-black text-white w-full h-full flex items-center justify-center rounded-r-xl">
+                                <p className="text-xs">Waiting for other user</p>
                             </div>
                         )}
                     </div>
@@ -250,8 +257,8 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                     <div className="
                         relative
                         w-full
-                        grid grid-cols-2
-                        gap-2 px-8 mt-4
+                        grid grid-cols-4
+                        gap-2 px-2
 
                         md:grid-cols-1
                         md:absolute
@@ -271,17 +278,17 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                                     <img
                                         src={image.localPic}
                                         alt={`Local Picture preview ${i + 1}`}
-                                        className="w-1/2 h-40"
+                                        className="w-1/2 md:h-40 h-16 rounded-l-lg"
                                     />
 
                                     <img
                                         src={image.remotePic}
                                         alt={`Remote Picture preview ${i + 1}`}
-                                        className="w-1/2 h-40"
+                                        className="w-1/2 md:h-40 h-16 rounded-r-lg"
                                     />
                                 </div>
 
-                                <p className="w-10 h-10 rounded-full border border-black flex items-center justify-center">
+                                <p className="w-6 h-6 rounded-full border border-black flex items-center justify-center text-xs">
                                     {i + 1}
                                 </p>
                             </div>
@@ -295,7 +302,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                             onClick={handleRetake}
                             disabled={images.length < 1 || loading}
                             className={clsx(
-                                "border border-black px-12 py-4 rounded-lg flex items-center justify-center gap-2",
+                                "md:order-1 order-2 border border-black px-12 py-4 rounded-lg flex items-center justify-center gap-2",
                                 images.length < 1 || loading
                                     ? "opacity-70 cursor-not-allowed"
                                     : "cursor-pointer"
@@ -309,7 +316,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                             onClick={handleCapture}
                             disabled={loading}
                             className={clsx(
-                                "bg-black px-12 py-4 text-white rounded-lg flex items-center justify-center gap-2",
+                                "md:order-2 order-1 bg-black px-12 py-4 text-white rounded-lg flex items-center justify-center gap-2",
                                 loading
                                     ? "opacity-70 cursor-not-allowed"
                                     : "cursor-pointer"
