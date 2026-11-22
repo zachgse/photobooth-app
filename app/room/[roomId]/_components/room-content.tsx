@@ -217,7 +217,7 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                 <div className="w-full lg:w-3/5 md:w-4/5 grid grid-cols-2 relative">
                     <div className="relative aspect-[3/3]">
                         <Webcam mirrored
-                                audio={false}
+                                audio={true}
                                 videoConstraints={{ facingMode: "user" }}
                                 screenshotFormat="image/jpeg"
                                 ref={webcamRef}
@@ -231,7 +231,6 @@ export default function RoomContent({ roomId }: RoomContentProps) {
                                 ref={videoRef}
                                 autoPlay
                                 playsInline
-                                muted
                                 className="w-full h-full object-cover -scale-x-100 rounded-l-xl"
                             />
                         ) : (
